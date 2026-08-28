@@ -1,0 +1,75 @@
+.settings-app {
+  height: 100vh;
+  overflow: auto;
+  background: #f7f8fa;
+  color: #1f2329;
+  font-family: system-ui, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+}
+
+.settings {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 28px 32px;
+}
+
+.settings h1 {
+  font-size: 20px;
+  margin: 0 0 20px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.row select,
+.row input[type='range'] {
+  accent-color: #38bdf8;
+}
+
+.row select {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.row input[type='range'] {
+  width: 160px;
+}
+
+.row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: #38bdf8;
+}
+
+.actions {
+  border-bottom: none;
+  padding-top: 20px;
+  justify-content: flex-start;
+}
+
+.actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #38bdf8;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background: #0ea5e9;
+}
+
+.saved {
+  color: #16a34a;
+  font-size: 13px;
+}
