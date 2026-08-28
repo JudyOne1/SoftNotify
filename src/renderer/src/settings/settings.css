@@ -17,6 +17,26 @@
   margin: 0 0 20px;
 }
 
+.settings h2 {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 20px 0 4px;
+  font-weight: 600;
+}
+
+.time-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-range input[type='time'] {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: #fff;
+}
+
 .row {
   display: flex;
   align-items: center;

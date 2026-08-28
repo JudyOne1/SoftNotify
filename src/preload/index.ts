@@ -7,6 +7,9 @@ const api = {
   testReminder: (): Promise<void> => ipcRenderer.invoke('notify:test'),
   onReminder: (callback: (payload: ReminderPayload) => void): void => {
     ipcRenderer.on('notify:reminder', (_event, payload: ReminderPayload) => callback(payload))
+  },
+  onConfigChanged: (callback: (config: Config) => void): void => {
+    ipcRenderer.on('config:changed', (_event, config: Config) => callback(config))
   }
 }
 

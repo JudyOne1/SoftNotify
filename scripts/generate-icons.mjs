@@ -56,7 +56,6 @@ function encodePNG(width, height, rgba) {
 }
 
 // 水滴形状：下方圆形 + 上方尖角
-const BASE = [56, 189, 248] // #38bdf8
 
 function inCircle(u, v, cx, cy, r) {
   return (u - cx) ** 2 + (v - cy) ** 2 <= r * r
@@ -72,14 +71,14 @@ function inTriangle(u, v, [ax, ay], [bx, by], [cx, cy]) {
   return !(hasNeg && hasPos)
 }
 
-function sample(u, v) {
+function sample(u, v, base) {
   const inDrop = inCircle(u, v, 0.5, 0.62, 0.3) || inTriangle(u, v, [0.5, 0.08], [0.26, 0.55], [0.74, 0.55])
   if (!inDrop) return [0, 0, 0, 0]
   if (inCircle(u, v, 0.41, 0.56, 0.06)) return [255, 255, 255, 220] // 高光
-  return [...BASE, 255]
+  return [...base, 255]
 }
 
-function generate(size) {
+function generate(size, base) {
   const rgba = Buffer.alloc(size * size * 4)
   const offsets = [0.25, 0.75]
   for (let y = 0; y < size; y++) {
@@ -91,7 +90,7 @@ function generate(size) {
         a = 0
       for (const oy of offsets) {
         for (const ox of offsets) {
-          const [sr, sg, sb, sa] = sample((x + ox) / size, (y + oy) / size)
+          const [sr, sg, sb, sa] = sample((x + ox) / size, (y + oy) / size, base)
           r += sr
           g += sg
           b += sb
@@ -108,13 +107,17 @@ function generate(size) {
   return encodePNG(size, size, rgba)
 }
 
+const BLUE = [56, 189, 248] // #38bdf8
+const GRAY = [156, 163, 175] // #9ca3af，暂停状态
+
 const targets = [
-  [join(root, 'build', 'icon.png'), 512],
-  [join(root, 'resources', 'tray.png'), 64]
+  [join(root, 'build', 'icon.png'), 512, BLUE],
+  [join(root, 'resources', 'tray.png'), 64, BLUE],
+  [join(root, 'resources', 'tray-paused.png'), 64, GRAY]
 ]
 
-for (const [file, size] of targets) {
+for (const [file, size, base] of targets) {
   mkdirSync(dirname(file), { recursive: true })
-  writeFileSync(file, generate(size))
+  writeFileSync(file, generate(size, base))
   console.log(`generated ${file} (${size}x${size})`)
 }

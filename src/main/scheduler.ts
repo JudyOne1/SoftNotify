@@ -4,6 +4,8 @@ export class Scheduler {
   private timer: NodeJS.Timeout | null = null
   private nextAt = 0
   private intervalMs = 0
+  /** 休眠错过提醒的策略：'fire' 唤醒后补发，'skip' 丢弃 */
+  missedPolicy: 'fire' | 'skip' = 'fire'
 
   constructor(private readonly onRemind: () => void) {}
 
@@ -18,11 +20,6 @@ export class Scheduler {
     this.timer = null
     this.nextAt = 0
     powerMonitor.removeListener('resume', this.handleResume)
-  }
-
-  fireNow(): void {
-    this.onRemind()
-    if (this.intervalMs > 0) this.scheduleNext(this.intervalMs)
   }
 
   nextInMinutes(): number {
@@ -40,10 +37,10 @@ export class Scheduler {
     }, delayMs)
   }
 
-  /** 系统唤醒后：错过的提醒立即补发，然后重置周期 */
+  /** 系统唤醒后：按策略补发或丢弃错过的提醒，然后重置周期 */
   private handleResume = (): void => {
     if (!this.intervalMs) return
-    if (this.nextAt && Date.now() >= this.nextAt) {
+    if (this.missedPolicy === 'fire' && this.nextAt && Date.now() >= this.nextAt) {
       this.onRemind()
     }
     this.scheduleNext(this.intervalMs)

@@ -8,7 +8,13 @@ export const DEFAULT_CONFIG: Config = {
   soundEnabled: true,
   volume: 0.7,
   autostart: true,
-  paused: false
+  paused: false,
+  quietEnabled: true,
+  quietStart: '22:00',
+  quietEnd: '08:00',
+  missedPolicy: 'fire',
+  theme: 'sky',
+  speed: 'normal'
 }
 
 let cache: Config | null = null

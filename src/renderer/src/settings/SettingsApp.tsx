@@ -77,6 +77,67 @@ export default function SettingsApp(): React.JSX.Element {
           />
         </label>
 
+        <h2>免打扰</h2>
+
+        <label className="row">
+          <span>安静时段</span>
+          <input
+            type="checkbox"
+            checked={config.quietEnabled}
+            onChange={(e) => void patch({ quietEnabled: e.target.checked })}
+          />
+        </label>
+
+        <label className="row">
+          <span>时段范围</span>
+          <span className="time-range">
+            <input
+              type="time"
+              disabled={!config.quietEnabled}
+              value={config.quietStart}
+              onChange={(e) => void patch({ quietStart: e.target.value })}
+            />
+            <span>至</span>
+            <input
+              type="time"
+              disabled={!config.quietEnabled}
+              value={config.quietEnd}
+              onChange={(e) => void patch({ quietEnd: e.target.value })}
+            />
+          </span>
+        </label>
+
+        <label className="row">
+          <span>休眠错过的提醒</span>
+          <select
+            value={config.missedPolicy}
+            onChange={(e) => void patch({ missedPolicy: e.target.value as Config['missedPolicy'] })}
+          >
+            <option value="fire">唤醒后补发</option>
+            <option value="skip">直接丢弃</option>
+          </select>
+        </label>
+
+        <h2>弹幕</h2>
+
+        <label className="row">
+          <span>颜色主题</span>
+          <select value={config.theme} onChange={(e) => void patch({ theme: e.target.value as Config['theme'] })}>
+            <option value="sky">天空（多彩）</option>
+            <option value="candy">糖果（粉紫）</option>
+            <option value="mono">素雅（灰白）</option>
+          </select>
+        </label>
+
+        <label className="row">
+          <span>飘过速度</span>
+          <select value={config.speed} onChange={(e) => void patch({ speed: e.target.value as Config['speed'] })}>
+            <option value="slow">慢速</option>
+            <option value="normal">正常</option>
+            <option value="fast">快速</option>
+          </select>
+        </label>
+
         <div className="row actions">
           <button type="button" onClick={() => void window.notifyAPI.testReminder()}>
             测试提醒一次

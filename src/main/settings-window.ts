@@ -10,7 +10,7 @@ export function openSettings(): void {
   }
   win = new BrowserWindow({
     width: 480,
-    height: 600,
+    height: 800,
     resizable: false,
     title: 'Notify 设置',
     webPreferences: {
