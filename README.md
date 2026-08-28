@@ -37,6 +37,7 @@ npm run build:linux  # AppImage + deb
 
 - [调研报告](docs/research.md)：技术选型、竞品分析、平台踩坑清单
 - [开发计划](docs/development-plan.md)：阶段规划与决策记录
+- [想法池](docs/ideas.md)：功能头脑风暴与优先级建议
 
 ## 协议
 
