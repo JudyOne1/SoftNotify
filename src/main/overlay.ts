@@ -64,13 +64,14 @@ export function registerDisplayEvents(): void {
 }
 
 /** 向所有屏幕广播弹幕；提示音只由主屏窗口播放，避免重复发声 */
-export function sendReminder(text: string, soundEnabled: boolean, volume: number): void {
+export function sendReminder(text: string, soundEnabled: boolean, volume: number, audioUrl?: string): void {
   for (const [id, win] of windows) {
     if (win.isDestroyed()) continue
     const payload: ReminderPayload = {
       text,
       sound: soundEnabled && id === primaryId,
-      volume
+      volume,
+      audioUrl
     }
     win.webContents.send('notify:reminder', payload)
   }

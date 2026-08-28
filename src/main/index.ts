@@ -8,8 +8,15 @@ import { createOverlays, registerDisplayEvents, sendReminder } from './overlay'
 import { openSettings } from './settings-window'
 import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
+import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './audio'
 
 let scheduler: Scheduler
+
+/** 自定义音频的播放地址：file 模式且已选择文件时有效 */
+function audioUrl(): string | undefined {
+  const cfg = getConfig()
+  return cfg.audioMode === 'file' && cfg.audioFileName ? `media://localhost/${cfg.audioFileName}` : undefined
+}
 
 function findItem(itemId: string | undefined): ReminderItem | null {
   const cfg = getConfig()
@@ -26,7 +33,7 @@ function remind(item: ReminderItem | null, manual = false): void {
   const cfg = getConfig()
   const inQuiet = !manual && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)
   if (!inQuiet) {
-    sendReminder(pickText(item), cfg.soundEnabled, cfg.volume)
+    sendReminder(pickText(item), cfg.soundEnabled, cfg.volume, audioUrl())
   }
   refreshTray(handlers, scheduler)
 }
@@ -37,8 +44,7 @@ function broadcastConfig(cfg: Config): void {
   }
 }
 
-const handlers: TrayHandlers = {
-  onRemindNow: (itemId: string) => {
+const handlers: TrayHandlers = {  onRemindNow: (itemId: string) => {
     const item = findItem(itemId)
     remind(item, true)
     const cfg = getConfig()
@@ -56,6 +62,9 @@ const handlers: TrayHandlers = {
   onOpenSettings: () => openSettings()
 }
 
+// 自定义媒体协议必须在 app ready 前注册
+registerMediaScheme()
+
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
@@ -71,6 +80,8 @@ if (!app.requestSingleInstanceLock()) {
     createOverlays()
     registerDisplayEvents()
     createTray(handlers, scheduler)
+    handleMediaProtocol()
+    registerAudioIpc()
 
     if (process.argv.includes('--remind-now')) {
       setTimeout(() => remind(findItem(undefined), true), 1500)

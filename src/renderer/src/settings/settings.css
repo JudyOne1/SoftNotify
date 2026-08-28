@@ -225,3 +225,45 @@
   border-color: #38bdf8;
   color: #0ea5e9;
 }
+
+/* 自定义音频 */
+.audio-file {
+  justify-content: flex-start;
+}
+
+.audio-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.audio-btns {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.audio-btns button {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1f2329;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.audio-btns button:hover {
+  border-color: #38bdf8;
+  color: #0ea5e9;
+}
+
+.audio-note {
+  color: #ef4444;
+  font-size: 13px;
+  padding: 6px 0 0;
+}

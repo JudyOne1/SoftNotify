@@ -33,10 +33,25 @@ export interface Config {
   theme: 'sky' | 'candy' | 'mono'
   /** 弹幕速度档位 */
   speed: 'slow' | 'normal' | 'fast'
+  /** 提示音来源：合成 / 自定义音频文件 */
+  audioMode: 'synth' | 'file'
+  /** 自定义音频文件名（存于 userData/audio/ 下），空表示未选择 */
+  audioFileName: string
 }
 
 export interface ReminderPayload {
   text: string
   sound: boolean
   volume: number
+  /** 自定义音频地址（media:// 协议），未配置时为空 */
+  audioUrl?: string
+}
+
+/** 选择自定义音频的结果 */
+export interface AudioChoiceResult {
+  canceled: boolean
+  /** 选择成功时的文件名（已复制到 userData/audio/） */
+  fileName?: string
+  /** 失败原因：超过大小限制 / 格式不支持 */
+  reason?: 'size' | 'ext'
 }

@@ -20,6 +20,7 @@ function newId(): string {
 export default function SettingsApp(): React.JSX.Element {
   const [config, setConfig] = useState<Config | null>(null)
   const [saved, setSaved] = useState(false)
+  const [audioNote, setAudioNote] = useState('')
   /** 名称/文案的本地草稿：失焦或回车才写回配置，避免每次按键被服务端清洗后打断输入 */
   const [drafts, setDrafts] = useState<Record<string, ReminderDraft>>({})
 
@@ -72,8 +73,20 @@ export default function SettingsApp(): React.JSX.Element {
     await patch({ reminders: (config?.reminders ?? []).map((r) => (r.id === id ? { ...r, ...p } : r)) })
   }
 
-  async function addItem(presetIndex: number | null): Promise<void> {
-    const preset = presetIndex === null ? null : REMINDER_PRESETS[presetIndex]
+  async function chooseAudioFile(): Promise<void> {
+    const res = await window.notifyAPI.chooseAudio()
+    if (!res.canceled && res.fileName) {
+      setAudioNote('')
+      await patch({ audioMode: 'file', audioFileName: res.fileName })
+    } else if (res.reason === 'size') {
+      setAudioNote('文件超过 10MB，请换一个小一点的')
+    } else if (res.reason === 'ext') {
+      setAudioNote('仅支持 mp3 / wav / ogg / m4a / flac')
+    }
+    setTimeout(() => setAudioNote(''), 2500)
+  }
+
+  async function addItem(presetIndex: number | null): Promise<void> {    const preset = presetIndex === null ? null : REMINDER_PRESETS[presetIndex]
     const item: ReminderItem = {
       id: newId(),
       name: preset?.name ?? '新提醒',
@@ -188,6 +201,39 @@ export default function SettingsApp(): React.JSX.Element {
             onChange={(e) => void patch({ volume: Number(e.target.value) })}
           />
         </label>
+
+        <label className="row">
+          <span>提示音来源</span>
+          <select
+            value={config.audioMode}
+            onChange={(e) => void patch({ audioMode: e.target.value as Config['audioMode'] })}
+          >
+            <option value="synth">合成提示音</option>
+            <option value="file">自定义音频</option>
+          </select>
+        </label>
+
+        {config.audioMode === 'file' && (
+          <div className="row audio-file">
+            <span className="audio-name" title={config.audioFileName}>
+              {config.audioFileName || '未选择文件'}
+            </span>
+            <span className="audio-btns">
+              <button type="button" onClick={() => void chooseAudioFile()}>
+                {config.audioFileName ? '更换' : '选择文件'}
+              </button>
+              {config.audioFileName && (
+                <button
+                  type="button"
+                  onClick={() => void new Audio(`media://localhost/${config.audioFileName}`).play()}
+                >
+                  试听
+                </button>
+              )}
+            </span>
+          </div>
+        )}
+        {audioNote && <div className="audio-note">{audioNote}</div>}
 
         <label className="row">
           <span>开机自启</span>

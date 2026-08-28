@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Config } from '@shared/types'
-import { playChime } from '../audio/chime'
+import { playReminderSound } from '../audio/player'
 import './overlay.css'
 
 interface DanmakuItem {
@@ -52,7 +52,7 @@ export default function OverlayApp(): React.JSX.Element {
     })
     window.notifyAPI.onReminder((payload) => {
       setItems((prev) => [...prev, randomItem(payload.text, configRef.current)])
-      if (payload.sound) playChime(payload.volume)
+      if (payload.sound) playReminderSound(payload.volume, payload.audioUrl)
     })
   }, [])
 

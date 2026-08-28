@@ -16,7 +16,9 @@ export const DEFAULT_CONFIG: Config = {
   quietEnd: '08:00',
   missedPolicy: 'fire',
   theme: 'sky',
-  speed: 'normal'
+  speed: 'normal',
+  audioMode: 'synth',
+  audioFileName: ''
 }
 
 let cache: Config | null = null
@@ -87,6 +89,8 @@ export function updateConfig(patch: Partial<Config>): Config {
   const next = { ...getConfig(), ...patch }
   next.reminders = normalizeReminders(patch.reminders !== undefined ? patch.reminders : getConfig().reminders)
   next.volume = Math.min(1, Math.max(0, next.volume))
+  next.audioMode = next.audioMode === 'file' ? 'file' : 'synth'
+  next.audioFileName = /^[\w.-]+$/.test(next.audioFileName ?? '') ? next.audioFileName : ''
   cache = next
 
   const file = configFile()

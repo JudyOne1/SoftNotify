@@ -1,10 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Config, ReminderPayload } from '@shared/types'
+import type { AudioChoiceResult, Config, ReminderPayload } from '@shared/types'
 
 const api = {
   getConfig: (): Promise<Config> => ipcRenderer.invoke('config:get'),
   setConfig: (patch: Partial<Config>): Promise<Config> => ipcRenderer.invoke('config:set', patch),
   testReminder: (itemId?: string): Promise<void> => ipcRenderer.invoke('notify:test', itemId),
+  chooseAudio: (): Promise<AudioChoiceResult> => ipcRenderer.invoke('audio:choose'),
   onReminder: (callback: (payload: ReminderPayload) => void): void => {
     ipcRenderer.on('notify:reminder', (_event, payload: ReminderPayload) => callback(payload))
   },
