@@ -1,11 +1,11 @@
-import { Menu, Tray, app, nativeImage, type NativeImage } from 'electron'
+import { Menu, Tray, app, nativeImage, type MenuItemConstructorOptions, type NativeImage } from 'electron'
 import { join } from 'node:path'
 import { getConfig } from './store'
 import { inQuietHours } from '@shared/quiet'
 import type { Scheduler } from './scheduler'
 
 export interface TrayHandlers {
-  onRemindNow: () => void
+  onRemindNow: (itemId: string) => void
   onTogglePause: () => void
   onOpenSettings: () => void
 }
@@ -21,16 +21,27 @@ function statusText(scheduler: Scheduler): string {
   if (inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)) {
     return `Notify：安静时段（至 ${cfg.quietEnd}）`
   }
-  return `Notify：${scheduler.nextInMinutes()} 分钟后提醒`
+  const next = cfg.reminders.find((r) => r.id === scheduler.nextItemId())
+  const label = next ? `${next.name} ` : ''
+  const minutes = scheduler.nextInMinutes()
+  if (!minutes && !next) return 'Notify：无已启用的提醒'
+  return `Notify：${label}${minutes} 分钟后提醒`
 }
 
 function buildMenu(handlers: TrayHandlers, scheduler: Scheduler): Menu {
   const cfg = getConfig()
   const status = statusText(scheduler)
+  const enabled = cfg.reminders.filter((r) => r.enabled)
+  const remindMenu: MenuItemConstructorOptions = {
+    label: '立即提醒一次',
+    submenu: enabled.length
+      ? enabled.map((r) => ({ label: r.name, click: () => handlers.onRemindNow(r.id) }))
+      : [{ label: '（无已启用的提醒）', enabled: false }]
+  }
   return Menu.buildFromTemplate([
     { label: status, enabled: false },
     { type: 'separator' },
-    { label: '立即提醒一次', click: handlers.onRemindNow },
+    remindMenu,
     { label: cfg.paused ? '恢复提醒' : '暂停提醒', click: handlers.onTogglePause },
     { type: 'separator' },
     { label: '打开设置', click: handlers.onOpenSettings },

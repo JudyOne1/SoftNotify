@@ -8,3 +8,8 @@ Thumbs.db
 *.local
 .vscode/
 .idea/
+
+# 本地 AI 协作工作目录（不入库、不发布）
+.worklog/
+.mimosa/
+.zcode/

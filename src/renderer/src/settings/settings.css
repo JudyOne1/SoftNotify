@@ -93,3 +93,135 @@
   color: #16a34a;
   font-size: 13px;
 }
+
+/* 提醒计划 */
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 10px;
+}
+
+.plan-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.plan-card.plan-off {
+  opacity: 0.55;
+}
+
+.plan-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-head input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #38bdf8;
+  flex: none;
+}
+
+.plan-name {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+.plan-name:focus,
+.plan-texts:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+.plan-head select {
+  padding: 4px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.plan-del {
+  border: none;
+  background: none;
+  color: #9ca3af;
+  font-size: 14px;
+  cursor: pointer;
+  flex: none;
+  padding: 2px 4px;
+}
+
+.plan-del:hover {
+  color: #ef4444;
+}
+
+.plan-texts {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.plan-foot {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.plan-foot .link {
+  border: none;
+  background: none;
+  color: #0ea5e9;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.plan-foot .link:hover {
+  text-decoration: underline;
+}
+
+.plan-empty {
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  padding: 18px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.plan-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.plan-add button {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1f2329;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.plan-add button:hover {
+  border-color: #38bdf8;
+  color: #0ea5e9;
+}
