@@ -111,6 +111,11 @@ export default function StatsSection({ theme }: { theme: 'light' | 'dark' }): Re
             其他：{otherItems.map((r) => `${r.name} ${stats?.todayByItem[r.id] ?? 0} 次`).join(' · ')}
           </div>
         )}
+        {stats && stats.todayFocus > 0 && (
+          <div className="rounded-lg bg-card p-3 text-[13px] text-muted-foreground shadow-[var(--neu-raised-sm)]">
+            🍅 今日专注 {stats.todayFocus} 个番茄
+          </div>
+        )}
         {stats?.todayTotal === 0 && (
           <div className="rounded-lg p-4 text-center text-[13px] text-muted-foreground shadow-[var(--neu-inset-sm)]">
             今天还没有打卡，悬停弹幕点「✓ 完成了」试试

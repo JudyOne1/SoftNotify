@@ -4,6 +4,7 @@ import { getConfig } from './store'
 import { inQuietHours } from '@shared/quiet'
 import { isManualMeeting } from './meeting'
 import { isFullscreenApp } from './fullscreen'
+import { currentPhase, isPomodoroActive, remainingMs } from './pomodoro'
 import { todayCheckinCount } from './stats'
 import type { Scheduler } from './scheduler'
 
@@ -13,6 +14,9 @@ export interface TrayHandlers {
   onApplyProfile: (id: string) => void
   onTogglePause: () => void
   onToggleMeeting: () => void
+  onStartFocus: (minutes: number) => void
+  onStopPomodoro: () => void
+  onTogglePomodoroLoop: () => void
   onOpenSettings: () => void
   onOpenHistory: () => void
   onOpenStats: () => void
@@ -26,6 +30,11 @@ let iconPaused: NativeImage | null = null
 function statusText(scheduler: Scheduler): string {
   const cfg = getConfig()
   if (cfg.paused) return 'Notify：已暂停'
+  if (isPomodoroActive()) {
+    const phase = currentPhase()
+    const min = Math.max(1, Math.ceil(remainingMs() / 60_000))
+    return phase === 'focus' ? `Notify：🍅 专注中 · 剩余 ${min} 分钟` : `Notify：☕ 休息中 · 剩余 ${min} 分钟`
+  }
   if (isManualMeeting()) return 'Notify：会议模式（手动）'
   if (isFullscreenApp()) return 'Notify：全屏应用中（免打扰）'
   if (inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)) {
@@ -85,6 +94,23 @@ function profileSubmenu(handlers: TrayHandlers): MenuItemConstructorOptions {
   }
 }
 
+/** 番茄钟子菜单：开始专注 / 停止 / 自动循环 */
+function pomodoroSubmenu(handlers: TrayHandlers): MenuItemConstructorOptions {
+  const cfg = getConfig()
+  const active = isPomodoroActive()
+  return {
+    label: '🍅 专注',
+    submenu: [
+      { label: '开始专注 25 分钟', enabled: !active, click: () => handlers.onStartFocus(25) },
+      { label: '开始专注 45 分钟', enabled: !active, click: () => handlers.onStartFocus(45) },
+      { label: '开始专注 60 分钟', enabled: !active, click: () => handlers.onStartFocus(60) },
+      { label: '停止专注', enabled: active, click: handlers.onStopPomodoro },
+      { type: 'separator' },
+      { label: '自动循环', type: 'checkbox' as const, checked: cfg.pomodoroAutoLoop, click: handlers.onTogglePomodoroLoop }
+    ]
+  }
+}
+
 function buildMenu(handlers: TrayHandlers, scheduler: Scheduler): Menu {
   const cfg = getConfig()
   return Menu.buildFromTemplate([
@@ -100,6 +126,7 @@ function buildMenu(handlers: TrayHandlers, scheduler: Scheduler): Menu {
       checked: isManualMeeting(),
       click: handlers.onToggleMeeting
     },
+    pomodoroSubmenu(handlers),
     { type: 'separator' },
     { label: '打卡统计', click: handlers.onOpenStats },
     { label: '弹幕历史', click: handlers.onOpenHistory },

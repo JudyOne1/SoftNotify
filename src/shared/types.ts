@@ -99,6 +99,8 @@ export interface Config {
   meetingDetect: boolean
   /** 前台应用全屏（观影/游戏）时自动免打扰 */
   fullscreenDetect: boolean
+  /** 番茄钟：休息结束后自动开始下一轮专注 */
+  pomodoroAutoLoop: boolean
   /** 休眠错过提醒的策略：补发 / 丢弃 */
   missedPolicy: 'fire' | 'skip'
   /** 弹幕颜色主题 */

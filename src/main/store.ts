@@ -25,6 +25,7 @@ export const DEFAULT_CONFIG: Config = {
   quietEnd: '08:00',
   meetingDetect: false,
   fullscreenDetect: true,
+  pomodoroAutoLoop: false,
   missedPolicy: 'fire',
   theme: 'sky',
   speed: 'normal',
@@ -243,6 +244,7 @@ export function getConfig(): Config {
         festivalEnabled: stored.festivalEnabled !== false,
         meetingDetect: stored.meetingDetect === true,
         fullscreenDetect: stored.fullscreenDetect !== false,
+        pomodoroAutoLoop: stored.pomodoroAutoLoop === true,
         highPriorityNotify: stored.highPriorityNotify === true,
         hoverInteraction: stored.hoverInteraction !== false,
         escalateEnabled: stored.escalateEnabled !== false,
@@ -298,6 +300,7 @@ export function updateConfig(patch: Partial<Config>): Config {
   next.festivalEnabled = next.festivalEnabled !== false
   next.meetingDetect = next.meetingDetect === true
   next.fullscreenDetect = next.fullscreenDetect !== false
+  next.pomodoroAutoLoop = next.pomodoroAutoLoop === true
   next.highPriorityNotify = next.highPriorityNotify === true
   next.hoverInteraction = next.hoverInteraction !== false
   next.escalateEnabled = next.escalateEnabled !== false

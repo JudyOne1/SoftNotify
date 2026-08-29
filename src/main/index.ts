@@ -13,6 +13,8 @@ import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './au
 import { initAutoUpdater, registerUpdateIpc } from './updater'
 import { isManualMeeting, isMeeting, setManualMeeting, startMeetingPolling } from './meeting'
 import { isFullscreenApp, startFullscreenPolling } from './fullscreen'
+import { initPomodoro, isPomodoroSuppressing, startFocus, stopPomodoro, updatePomodoroConfig } from './pomodoro'
+import { addFocusSession } from './stats'
 import { festivalGreeting } from './festivals'
 import { addHistory, getHistory } from './history'
 import { addCheckin, getStats, isCelebrated, itemDailyCounts, markCelebrated, startUsageTracking, todayCountFor } from './stats'
@@ -60,10 +62,12 @@ function remind(entry: ItemEntry | null, manual = false, escalateLevel = 0): voi
   const cfg = getConfig()
   const meeting = isMeeting()
   const fullscreen = isFullscreenApp()
+  const pomodoro = isPomodoroSuppressing()
   const inQuiet =
     !manual &&
     (meeting ||
       fullscreen ||
+      pomodoro ||
       (!entry?.ignoreQuiet && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)))
   if (!inQuiet) {
     let text = pickText(entry?.item ?? null)
@@ -202,6 +206,18 @@ const handlers: TrayHandlers = {
     setManualMeeting(!isManualMeeting())
     refreshTray(handlers, scheduler)
   },
+  onStartFocus: (minutes: number) => {
+    startFocus(minutes)
+    refreshTray(handlers, scheduler)
+  },
+  onStopPomodoro: () => {
+    stopPomodoro()
+    refreshTray(handlers, scheduler)
+  },
+  onTogglePomodoroLoop: () => {
+    updatePomodoroConfig({ autoLoop: !getConfig().pomodoroAutoLoop })
+    refreshTray(handlers, scheduler)
+  },
   onOpenSettings: () => openSettings(),
   onOpenHistory: () => openSettingsTo('history'),
   onOpenStats: () => openSettingsTo('stats')
@@ -246,6 +262,22 @@ if (!app.requestSingleInstanceLock()) {
     // 会议模式自动检测：状态变化只影响提醒静默与托盘展示
     startMeetingPolling(() => refreshTray(handlers, scheduler))
     startFullscreenPolling(() => refreshTray(handlers, scheduler))
+    initPomodoro({
+      onFocusEnd: (minutes) => {
+        const cfg = getConfig()
+        addFocusSession()
+        sendReminder(`🍅 专注 ${minutes} 分钟完成！休息 5 分钟，起来走走`, cfg.soundEnabled, cfg.volume, audioUrl())
+        addHistory({ text: `🍅 专注 ${minutes} 分钟完成`, at: Date.now() })
+        refreshTray(handlers, scheduler)
+      },
+      onBreakEnd: () => {
+        const cfg = getConfig()
+        sendReminder('休息结束，继续加油！', cfg.soundEnabled, cfg.volume, audioUrl())
+        addHistory({ text: '休息结束', at: Date.now() })
+        refreshTray(handlers, scheduler)
+      }
+    })
+    updatePomodoroConfig({ autoLoop: getConfig().pomodoroAutoLoop })
 
     if (process.argv.includes('--remind-now')) {
       setTimeout(() => remind(findItem(undefined), true), 1500)
@@ -261,6 +293,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('config:set', (_event, patch: Partial<Config>) => {
       const next = updateConfig(patch)
       if (patch.autostart !== undefined) applyAutostart(next.autostart)
+      if (patch.pomodoroAutoLoop !== undefined) updatePomodoroConfig({ autoLoop: next.pomodoroAutoLoop })
       scheduler.missedPolicy = next.missedPolicy
       if (patch.reminders !== undefined || patch.schedules !== undefined || patch.paused !== undefined) {
         applyConfig(next)
