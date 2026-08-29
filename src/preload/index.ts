@@ -8,6 +8,8 @@ const api = {
   chooseAudio: (): Promise<AudioChoiceResult> => ipcRenderer.invoke('audio:choose'),
   applyProfile: (id: string): Promise<Config> => ipcRenderer.invoke('profile:apply', id),
   saveProfile: (name: string): Promise<Config> => ipcRenderer.invoke('profile:save', name),
+  updateProfileItems: (id: string, itemIds: string[]): Promise<Config> =>
+    ipcRenderer.invoke('profile:update-items', id, itemIds),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open:external', url),
   checkUpdate: (): Promise<{ status: UpdateStatus; version?: string }> => ipcRenderer.invoke('update:check'),

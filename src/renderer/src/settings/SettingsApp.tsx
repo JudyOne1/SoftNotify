@@ -185,13 +185,16 @@ export default function SettingsApp(): React.JSX.Element {
           {active === 'profiles' && (
             <>
               <SectionTitle title="模式" hint="把当前配置存成模式，之后在托盘一键切换" />
-              <ProfilesSection
-                profiles={config.profiles}
-                activeProfile={config.activeProfile}
-                onApply={(id) => void window.notifyAPI.applyProfile(id)}
-                onSave={(name) => void window.notifyAPI.saveProfile(name)}
-                onDelete={(id) => void deleteProfile(id)}
-              />
+                <ProfilesSection
+                  profiles={config.profiles}
+                  activeProfile={config.activeProfile}
+                  reminders={config.reminders}
+                  schedules={config.schedules}
+                  onApply={(id) => void window.notifyAPI.applyProfile(id)}
+                  onSave={(name) => void window.notifyAPI.saveProfile(name)}
+                  onDelete={(id) => void deleteProfile(id)}
+                  onUpdateItems={(id, itemIds) => void window.notifyAPI.updateProfileItems(id, itemIds)}
+                />
             </>
           )}
 

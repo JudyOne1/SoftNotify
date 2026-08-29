@@ -1,8 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain, Notification, screen, shell } from 'electron'
-import type { Config, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
+import type { Config, Profile, ReminderItem, ScheduleItem } from '@shared/types'
+import { applyItemEnabled, collectEnabledIds } from '@shared/profile-core'
 import { pickText } from '@shared/templates'
 import { inQuietHours } from '@shared/quiet'
-import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig, wasConfigCorrupted } from './store'
+import { getConfig, isFreshConfig, updateConfig, wasConfigCorrupted } from './store'
 import { Scheduler } from './scheduler'
 import { createOverlays, registerDisplayEvents, sendReminder, setOverlayUiRects, sortedDisplays, startHoverPolling } from './overlay'
 import { openSettings, openSettingsTo, usesNativeMaterial } from './settings-window'
@@ -113,19 +114,13 @@ function expireOnceSchedules(): Config {
   return updateConfig({ schedules: cfg.schedules.map((s) => (expired(s) ? { ...s, enabled: false } : s)) })
 }
 
-/** 保存当前设置为新的 Profile（快照覆盖字段全集，保证应用结果可预期） */
+/** 保存新模式：引用当前启用的提醒项 */
 function saveProfile(name: string): Config {
   const cfg = getConfig()
-  const patch: ProfilePatch = {}
-  const source = cfg as unknown as Record<string, unknown>
-  const target = patch as Record<string, unknown>
-  for (const field of PROFILE_FIELDS) {
-    target[field] = source[field]
-  }
   const profile: Profile = {
     id: `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     name: name.trim().slice(0, 20) || '新模式',
-    patch
+    itemIds: collectEnabledIds(cfg.reminders, cfg.schedules)
   }
   const next = updateConfig({ profiles: [...cfg.profiles, profile], activeProfile: profile.id })
   applyConfig(next)
@@ -136,8 +131,24 @@ function applyProfile(id: string): Config {
   const cfg = getConfig()
   const profile = cfg.profiles.find((p) => p.id === id)
   if (!profile) return cfg
-  const next = updateConfig({ ...profile.patch, activeProfile: profile.id })
+  const { reminders, schedules } = applyItemEnabled(cfg.reminders, cfg.schedules, profile.itemIds)
+  const next = updateConfig({ reminders, schedules, activeProfile: profile.id })
   applyConfig(next)
+  return next
+}
+
+/** 编辑模式的引用集合；若该模式正激活，同步切换提醒项启用状态（所见即所得） */
+function updateProfileItems(id: string, itemIds: string[]): Config {
+  const cfg = getConfig()
+  const next = updateConfig({
+    profiles: cfg.profiles.map((p) => (p.id === id ? { ...p, itemIds } : p))
+  })
+  if (next.activeProfile === id) {
+    const applied = applyItemEnabled(next.reminders, next.schedules, itemIds)
+    const final = updateConfig({ reminders: applied.reminders, schedules: applied.schedules })
+    applyConfig(final)
+    return final
+  }
   return next
 }
 
@@ -247,6 +258,9 @@ if (!app.requestSingleInstanceLock()) {
     })
     ipcMain.handle('profile:apply', (_event, id: string) => applyProfile(String(id)))
     ipcMain.handle('profile:save', (_event, name: string) => saveProfile(String(name)))
+    ipcMain.handle('profile:update-items', (_event, id: string, itemIds: string[]) =>
+      updateProfileItems(String(id), Array.isArray(itemIds) ? itemIds.map(String) : [])
+    )
     ipcMain.handle('app:version', () => app.getVersion())
     ipcMain.handle('history:get', () => getHistory())
     ipcMain.handle('ui:env', () => ({ nativeMaterial: usesNativeMaterial() }))

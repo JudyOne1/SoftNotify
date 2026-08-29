@@ -1,7 +1,8 @@
 import { app } from 'electron'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { Config, DanmakuStyle, Profile, ProfilePatch, ReminderItem, ScheduleItem, SoundPreset } from '@shared/types'
+import { migrateLegacyProfiles } from '@shared/profile-core'
+import type { Config, DanmakuStyle, Profile, ReminderItem, ScheduleItem, SoundPreset } from '@shared/types'
 
 const SOUND_PRESET_VALUES: SoundPreset[] = ['classic', 'windchime', 'water', 'knock', 'musicbox']
 
@@ -188,18 +189,7 @@ export function normalizeDanmaku(input: unknown): DanmakuStyle {
   }
 }
 
-/** Profile 覆盖的字段（快照/应用都用这个范围） */
-export const PROFILE_FIELDS = [
-  'reminders',
-  'schedules',
-  'quietEnabled',
-  'quietStart',
-  'quietEnd',
-  'theme',
-  'speed',
-  'danmaku'
-] as const
-
+/** 清洗模式：v2 引用式 itemIds；旧版快照（含 patch）自动迁移为引用集合 */
 export function normalizeProfiles(input: unknown): Profile[] {
   if (!Array.isArray(input)) return []
   const seen = new Set<string>()
@@ -209,17 +199,17 @@ export function normalizeProfiles(input: unknown): Profile[] {
     const r = raw as Record<string, unknown>
     const id = uniqueId(seen, r['id'])
     const name = typeof r['name'] === 'string' && r['name'].trim() ? r['name'].trim().slice(0, 20) : '模式'
-    const patchRaw = (r['patch'] && typeof r['patch'] === 'object' ? r['patch'] : {}) as Record<string, unknown>
-    const patch: ProfilePatch = {}
-    if (patchRaw['reminders'] !== undefined) patch.reminders = normalizeReminders(patchRaw['reminders'])
-    if (patchRaw['schedules'] !== undefined) patch.schedules = normalizeSchedules(patchRaw['schedules'])
-    if (patchRaw['quietEnabled'] !== undefined) patch.quietEnabled = patchRaw['quietEnabled'] === true
-    if (typeof patchRaw['quietStart'] === 'string') patch.quietStart = normalizeTime(patchRaw['quietStart'])
-    if (typeof patchRaw['quietEnd'] === 'string') patch.quietEnd = normalizeTime(patchRaw['quietEnd'])
-    if (patchRaw['theme'] === 'sky' || patchRaw['theme'] === 'candy' || patchRaw['theme'] === 'mono') patch.theme = patchRaw['theme']
-    if (patchRaw['speed'] === 'slow' || patchRaw['speed'] === 'normal' || patchRaw['speed'] === 'fast') patch.speed = patchRaw['speed']
-    if (patchRaw['danmaku'] !== undefined) patch.danmaku = normalizeDanmaku(patchRaw['danmaku'])
-    items.push({ id, name, patch })
+    let itemIds: string[]
+    if (r['patch'] !== undefined) {
+      itemIds = migrateLegacyProfiles([r], (prefix, itemId) => `${prefix}:${itemId}`)[0]?.itemIds ?? []
+    } else if (Array.isArray(r['itemIds'])) {
+      itemIds = r['itemIds']
+        .filter((v): v is string => typeof v === 'string' && /^(r|s):/.test(v))
+        .slice(0, 40)
+    } else {
+      itemIds = []
+    }
+    items.push({ id, name, itemIds })
   }
   return items
 }

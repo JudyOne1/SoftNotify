@@ -45,22 +45,14 @@ export interface ScheduleItem {
   ignoreQuiet: boolean
 }
 
-/** Profile：快照「提醒计划 + 定时日程 + 安静时段 + 弹幕外观」，一键切换场景 */
+/**
+ * 模式：引用式容器——一组「启用的提醒项」（r:/s: 前缀）。
+ * 项本体只有一份，编辑在提醒分区进行，所有模式共享；应用模式只切换 enabled。
+ */
 export interface Profile {
   id: string
   name: string
-  patch: ProfilePatch
-}
-
-export interface ProfilePatch {
-  reminders?: ReminderItem[]
-  schedules?: ScheduleItem[]
-  quietEnabled?: boolean
-  quietStart?: string
-  quietEnd?: string
-  theme?: Config['theme']
-  speed?: Config['speed']
-  danmaku?: DanmakuStyle
+  itemIds: string[]
 }
 
 /** 弹幕外观自定义 */
