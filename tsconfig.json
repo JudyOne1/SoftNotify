@@ -15,7 +15,8 @@
     "isolatedModules": true,
     "types": ["node"],
     "paths": {
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@/*": ["./src/renderer/src/*"]
     }
   },
   "include": ["src", "electron.vite.config.ts"]

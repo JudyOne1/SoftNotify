@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import './styles/globals.css'
 import OverlayApp from './overlay/OverlayApp'
 import SettingsApp from './settings/SettingsApp'
 import WelcomeApp from './settings/WelcomeApp'

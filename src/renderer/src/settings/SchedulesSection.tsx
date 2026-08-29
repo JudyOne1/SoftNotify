@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import type { ScheduleItem } from '@shared/types'
 import { SCHEDULE_PRESETS } from '@shared/templates'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 import { newId, timeIso, todayIso } from './util'
 
 const WEEKDAYS = [
@@ -56,7 +62,7 @@ export default function SchedulesSection({ schedules, onChange, onTest }: Props)
 
   return (
     <>
-      <div className="plan-list">
+      <div className="mt-3 mb-2.5 flex flex-col gap-3">
         {schedules.map((item) => (
           <ScheduleCard
             key={item.id}
@@ -66,19 +72,23 @@ export default function SchedulesSection({ schedules, onChange, onTest }: Props)
             onTest={onTest}
           />
         ))}
-        {schedules.length === 0 && <div className="plan-empty">还没有定时日程，从下面添加一个吧</div>}
+        {schedules.length === 0 && (
+          <div className="rounded-lg p-4 text-center text-[13px] text-muted-foreground shadow-[var(--neu-inset)]">
+            还没有定时日程，从下面添加一个吧
+          </div>
+        )}
       </div>
-      <div className="plan-add">
-        <button type="button" onClick={() => add('countdown')}>
+      <div className="mb-2 flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" onClick={() => add('countdown')}>
           ＋ 倒计时（30 分钟）
-        </button>
-        <button type="button" onClick={() => add('blank')}>
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => add('blank')}>
           ＋ 空白日程
-        </button>
+        </Button>
         {SCHEDULE_PRESETS.map((p, i) => (
-          <button key={p.name} type="button" onClick={() => add(i)}>
+          <Button key={p.name} variant="secondary" size="sm" onClick={() => add(i)}>
             ＋ {p.name}
-          </button>
+          </Button>
         ))}
       </div>
     </>
@@ -124,73 +134,91 @@ function ScheduleCard({
   }
 
   return (
-    <div className={`plan-card${item.enabled ? '' : ' plan-off'}`}>
-      <div className="plan-head">
-        <input type="checkbox" title="启用该日程" checked={item.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} />
-        <input
-          className="plan-name"
+    <div className={`rounded-lg bg-card p-3.5 shadow-[var(--neu-raised)] transition-[filter] hover:brightness-110 ${item.enabled ? '' : 'opacity-55'}`}>
+      <div className="flex items-center gap-2.5">
+        <Switch checked={item.enabled} onCheckedChange={(v) => onChange({ enabled: v })} />
+        <Input
           value={name}
           maxLength={20}
           placeholder="日程名称"
+          className="flex-1"
           onChange={(e) => setName(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === 'Enter' && commit()}
         />
-        <input type="time" value={item.time} onChange={(e) => onChange({ time: e.target.value })} />
-        <button type="button" className="plan-del" title="删除" onClick={onDelete}>
+        <input
+          type="time"
+          className="h-9 rounded-md bg-transparent px-2 text-sm shadow-[var(--neu-inset-sm)]"
+          value={item.time}
+          onChange={(e) => onChange({ time: e.target.value })}
+        />
+        <Button variant="destructive" size="icon" title="删除" onClick={onDelete}>
           ✕
-        </button>
+        </Button>
       </div>
-      <div className="plan-sub">
-        <label className="chip-label">
-          <input type="checkbox" checked={isOnce} onChange={(e) => toggleOnce(e.target.checked)} />
+      <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
+        <Label className="text-[13px] text-muted-foreground">
+          <Switch checked={isOnce} onCheckedChange={toggleOnce} />
           单次
-        </label>
+        </Label>
         {isOnce ? (
-          <input type="date" value={item.date} min={todayIso()} onChange={(e) => onChange({ date: e.target.value || todayIso() })} />
+          <input
+            type="date"
+            className="h-9 rounded-md bg-transparent px-2 text-sm shadow-[var(--neu-inset-sm)]"
+            value={item.date}
+            min={todayIso()}
+            onChange={(e) => onChange({ date: e.target.value || todayIso() })}
+          />
         ) : (
-          <span className="chips">
+          <span className="flex flex-wrap items-center gap-1">
             {WEEKDAYS.map((w) => (
               <button
                 key={w.value}
                 type="button"
-                className={`chip${item.weekdays.includes(w.value) ? ' chip-on' : ''}`}
                 title={item.weekdays.length === 0 ? '当前：每天（点选可指定周几）' : undefined}
                 onClick={() => toggleWeekday(w.value)}
+                className={cn(
+                  'cursor-pointer rounded-full px-2.5 py-0.5 text-xs transition-all',
+                  item.weekdays.includes(w.value)
+                    ? 'bg-primary/20 text-primary shadow-[var(--neu-inset-sm)]'
+                    : 'bg-card text-muted-foreground shadow-[var(--neu-raised-sm)] hover:text-foreground'
+                )}
               >
                 {w.label}
               </button>
             ))}
-            <span className="chip-hint">{item.weekdays.length === 0 ? '每天' : '周几触发'}</span>
+            <span className="ml-1 text-xs text-muted-foreground">
+              {item.weekdays.length === 0 ? '每天' : '周几触发'}
+            </span>
           </span>
         )}
       </div>
-      <div className="plan-sub">
-        <label className="chip-label">
-          <input type="checkbox" checked={item.ignoreQuiet} onChange={(e) => onChange({ ignoreQuiet: e.target.checked })} />
+      <div className="mt-2 flex items-center">
+        <Label className="text-[13px] text-muted-foreground">
+          <Switch checked={item.ignoreQuiet} onCheckedChange={(v) => onChange({ ignoreQuiet: v })} />
           忽略安静时段
-        </label>
+        </Label>
       </div>
-      <textarea
-        className="plan-texts"
+      <Textarea
         rows={2}
+        className="mt-2.5"
         value={texts}
         placeholder="每行一条弹幕文案，留空则使用内置通用文案"
         onChange={(e) => setTexts(e.target.value)}
         onBlur={commit}
       />
-      <div className="plan-foot">
-        <button type="button" className="link" onClick={() => setNightOpen(!nightOpen)}>
+      <div className="mt-1.5 flex justify-end gap-1">
+        <Button variant="link" size="sm" className="h-auto text-muted-foreground hover:text-foreground" onClick={() => setNightOpen(!nightOpen)}>
           {nightOpen ? '收起夜间文案' : item.nightTexts?.length ? '夜间文案 ●' : '夜间文案'}
-        </button>
-        <button type="button" className="link" onClick={() => onTest(item.id)}>
+        </Button>
+        <Button variant="link" size="sm" className="h-auto" onClick={() => onTest(item.id)}>
           试一下
-        </button>
+        </Button>
       </div>
       {nightOpen && (
-        <textarea
-          className="plan-texts"
+        <Textarea
           rows={2}
+          className="mt-1"
           value={nightTexts}
           placeholder="22:00-06:00 触发时优先使用，每行一条，留空沿用上面的文案"
           onChange={(e) => setNightTexts(e.target.value)}

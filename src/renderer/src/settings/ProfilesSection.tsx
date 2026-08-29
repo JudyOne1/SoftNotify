@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import type { Profile } from '@shared/types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 interface Props {
   profiles: Profile[]
@@ -21,37 +24,44 @@ export default function ProfilesSection({ profiles, activeProfile, onApply, onSa
 
   return (
     <>
-      <div className="plan-list">
+      <div className="mt-3 mb-2.5 flex flex-col gap-2.5">
         {profiles.map((p) => (
-          <div key={p.id} className={`profile-row${activeProfile === p.id ? ' profile-active' : ''}`}>
-            <span className="profile-name" title={activeProfile === p.id ? '当前激活' : undefined}>
-              {activeProfile === p.id ? '● ' : ''}
+          <div
+            key={p.id}
+            className={cn(
+              'flex items-center gap-2.5 rounded-lg bg-card px-3.5 py-2 shadow-[var(--neu-raised)] transition-[filter] hover:brightness-110',
+              activeProfile === p.id && 'ring-1 ring-primary/60'
+            )}
+          >
+            <span className="min-w-0 flex-1 text-sm">
+              {activeProfile === p.id && <span className="mr-1 text-primary">●</span>}
               {p.name}
             </span>
-            <button type="button" className="link" onClick={() => onApply(p.id)}>
+            <Button variant="secondary" size="sm" onClick={() => onApply(p.id)}>
               应用
-            </button>
-            <button type="button" className="plan-del" title="删除" onClick={() => onDelete(p.id)}>
+            </Button>
+            <Button variant="destructive" size="icon" title="删除" onClick={() => onDelete(p.id)}>
               ✕
-            </button>
+            </Button>
           </div>
         ))}
         {profiles.length === 0 && (
-          <div className="plan-empty">把当前的提醒计划、安静时段、弹幕外观保存成一个模式，之后在托盘一键切换</div>
+          <div className="rounded-lg p-4 text-center text-[13px] text-muted-foreground shadow-[var(--neu-inset)]">
+            把当前的提醒计划、安静时段、弹幕外观保存成一个模式，之后在托盘一键切换
+          </div>
         )}
       </div>
-      <div className="plan-add">
-        <input
-          className="profile-input"
+      <div className="flex gap-2">
+        <Input
           value={name}
           maxLength={20}
           placeholder="模式名，如：工作"
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && save()}
         />
-        <button type="button" onClick={save}>
+        <Button variant="secondary" onClick={save}>
           保存当前为模式
-        </button>
+        </Button>
       </div>
     </>
   )
