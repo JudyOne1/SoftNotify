@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import type { Config, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
 import { pickText } from '@shared/templates'
 import { inQuietHours } from '@shared/quiet'
-import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig } from './store'
+import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig, wasConfigCorrupted } from './store'
 import { Scheduler } from './scheduler'
 import { createOverlays, registerDisplayEvents, sendReminder } from './overlay'
 import { openSettings, usesNativeMaterial } from './settings-window'
@@ -180,6 +180,9 @@ if (!app.requestSingleInstanceLock()) {
 
     if (process.argv.includes('--remind-now')) {
       setTimeout(() => remind(findItem(undefined), true), 1500)
+    }
+    if (wasConfigCorrupted()) {
+      setTimeout(() => sendReminder('配置文件损坏，已自动重置（旧文件保留为 .bak）', false, 0, undefined), 2500)
     }
     if (process.argv.includes('--open-settings')) {
       setTimeout(openSettings, 500)

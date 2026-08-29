@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { Config, DanmakuStyle, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
 
@@ -32,6 +32,8 @@ export const DEFAULT_CONFIG: Config = {
 let cache: Config | null = null
 /** 是否为全新安装（无历史配置文件），用于首启引导 */
 let fresh = false
+/** 配置文件是否损坏过（已自愈），用于提示用户 */
+let corrupted = false
 
 function configFile(): string {
   return join(app.getPath('userData'), 'config.json')
@@ -39,6 +41,10 @@ function configFile(): string {
 
 export function isFreshConfig(): boolean {
   return fresh
+}
+
+export function wasConfigCorrupted(): boolean {
+  return corrupted
 }
 
 function clampInterval(value: unknown): number {
@@ -211,8 +217,18 @@ export function getConfig(): Config {
         activeProfile: typeof stored.activeProfile === 'string' ? stored.activeProfile : null
       }
     } catch (error) {
+      // 坏文件改名保留现场（可人工恢复），再以默认值启动
+      const code = (error as NodeJS.ErrnoException).code
+      if (code !== 'ENOENT') {
+        try {
+          renameSync(configFile(), `${configFile()}.bak-${Date.now()}`)
+          corrupted = true
+        } catch {
+          corrupted = code !== 'ENOENT'
+        }
+      }
       cache = { ...DEFAULT_CONFIG }
-      fresh = (error as NodeJS.ErrnoException).code === 'ENOENT'
+      fresh = code === 'ENOENT'
     }
   }
   return cache

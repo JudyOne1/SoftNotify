@@ -1,29 +1,13 @@
 import { powerMonitor } from 'electron'
 import type { ReminderItem, ScheduleItem } from '@shared/types'
-
-/** 定时日程的下一个触发时刻（本地时区）；一次性日程返回其绝对时刻（可能已过期） */
-export function computeScheduleAt(item: Pick<ScheduleItem, 'time' | 'weekdays' | 'date'>, now: Date = new Date()): number {
-  const [h, m] = item.time.split(':').map(Number)
-  if (item.date) {
-    return new Date(`${item.date}T${item.time}:00`).getTime()
-  }
-  for (let offset = 0; offset < 8; offset++) {
-    const d = new Date(now)
-    d.setDate(d.getDate() + offset)
-    d.setHours(h, m, 0, 0)
-    const t = d.getTime()
-    if (t > now.getTime() && (item.weekdays.length === 0 || item.weekdays.includes(d.getDay()))) {
-      return t
-    }
-  }
-  return 0
-}
+import { applyJitter, computeIntervalAt, computeScheduleAt } from '@shared/schedule-core'
 
 type Source = 'reminder' | 'schedule'
 
 /**
- * 双源调度：间隔提醒（r:id）按固定周期，定时日程（s:id）按钟点。
+ * 双源调度：间隔提醒（r:id）按固定周期（可带抖动），定时日程（s:id）按钟点。
  * 单定时器只对准最近的下一次触发；sync 按 key+签名 差量更新，改某项不重置其他项。
+ * 时刻计算全部在 shared/schedule-core.ts（纯函数，可单测）。
  */
 export class Scheduler {
   private timer: NodeJS.Timeout | null = null
@@ -35,6 +19,8 @@ export class Scheduler {
   private scheduleItems = new Map<string, ScheduleItem>()
   /** 休眠错过提醒的策略：'fire' 唤醒后补发，'skip' 丢弃 */
   missedPolicy: 'fire' | 'skip' = 'fire'
+  /** 间隔抖动比例（0-0.5），0 关闭 */
+  jitterRatio = 0
 
   constructor(private readonly onRemind: (source: Source, itemId: string) => void) {
     powerMonitor.on('resume', this.handleResume)
@@ -63,14 +49,15 @@ export class Scheduler {
 
     for (const [key, sig] of desired) {
       if (this.nextAt.has(key)) continue
+      const nowDate = new Date(now)
       if (key.startsWith('r:')) {
         const minutes = Number(sig)
         this.intervalsMs.set(key, minutes * 60_000)
-        this.nextAt.set(key, now + minutes * 60_000)
+        this.nextAt.set(key, this.jitteredInterval(minutes, nowDate))
       } else {
         const item = this.scheduleItems.get(key.slice(2))
         if (!item) continue
-        const at = computeScheduleAt(item, new Date(now))
+        const at = computeScheduleAt(item, nowDate)
         if (at > now) this.nextAt.set(key, at)
       }
     }
@@ -91,7 +78,7 @@ export class Scheduler {
     const key = `r:${itemId}`
     const ms = this.intervalsMs.get(key)
     if (ms && this.nextAt.has(key)) {
-      this.nextAt.set(key, Date.now() + ms)
+      this.nextAt.set(key, this.jitteredInterval(ms / 60_000, new Date()))
       this.arm()
     }
   }
@@ -114,6 +101,11 @@ export class Scheduler {
       }
     }
     return null
+  }
+
+  /** 间隔周期 + 抖动 */
+  private jitteredInterval(intervalMinutes: number, now: Date): number {
+    return applyJitter(computeIntervalAt(intervalMinutes, now), intervalMinutes * 60_000, this.jitterRatio)
   }
 
   private earliest(): number | null {
@@ -148,7 +140,7 @@ export class Scheduler {
     if (key.startsWith('r:')) {
       const ms = this.intervalsMs.get(key)
       if (!ms) return
-      this.nextAt.set(key, now + ms)
+      this.nextAt.set(key, this.jitteredInterval(ms / 60_000, new Date(now)))
       this.onRemind('reminder', key.slice(2))
     } else {
       const item = this.scheduleItems.get(key.slice(2))
@@ -174,7 +166,7 @@ export class Scheduler {
       if (this.missedPolicy === 'fire') this.onRemind(key.startsWith('r:') ? 'reminder' : 'schedule', key.slice(2))
       if (key.startsWith('r:')) {
         const ms = this.intervalsMs.get(key)
-        if (ms) this.nextAt.set(key, now + ms)
+        if (ms) this.nextAt.set(key, this.jitteredInterval(ms / 60_000, new Date(now)))
       } else {
         const item = this.scheduleItems.get(key.slice(2))
         const next = item && !item.date ? computeScheduleAt(item, new Date(now)) : 0
