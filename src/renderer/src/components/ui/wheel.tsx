@@ -33,12 +33,12 @@ export function Wheel({ value, min, max, step = 1, onChange, label, className }:
 
   return (
     <div className={cn('flex flex-col items-center gap-0.5', className)}>
-      <WheelPickerWrapper className="h-24 w-full rounded-md shadow-[var(--neu-inset-sm)]">
+      <WheelPickerWrapper className="h-32 w-full rounded-md shadow-[var(--neu-inset-sm)]">
         <WheelPicker
           options={options}
           value={value}
           onValueChange={(v) => onChange(Number(v))}
-          optionItemHeight={24}
+          optionItemHeight={32}
           visibleCount={4}
           classNames={{
             optionItem: 'text-[13px] tabular-nums text-muted-foreground',
