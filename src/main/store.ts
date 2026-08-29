@@ -94,7 +94,9 @@ function normalizeItemCommon(seen: Set<string>, raw: Record<string, unknown>) {
   const enabled = raw['enabled'] !== false
   const texts = normalizeTexts(raw['texts'], 20)
   const nightTexts = normalizeTexts(raw['nightTexts'], 10)
-  return { id, name: name || '提醒', enabled, texts, nightTexts: nightTexts.length ? nightTexts : undefined }
+  const goalRaw = Number(raw['dailyGoal'])
+  const dailyGoal = Number.isFinite(goalRaw) && goalRaw >= 1 ? Math.min(99, Math.round(goalRaw)) : undefined
+  return { id, name: name || '提醒', enabled, texts, nightTexts: nightTexts.length ? nightTexts : undefined, ...(dailyGoal ? { dailyGoal } : {}) }
 }
 
 /** 清洗间隔提醒列表 */

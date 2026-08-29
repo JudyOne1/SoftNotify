@@ -10,6 +10,8 @@ export interface ReminderItem {
   texts: string[]
   /** 夜间文案（22:00-06:00 优先使用）；为空回退 texts */
   nightTexts?: string[]
+  /** 每日打卡目标次数（1-99）；为空不设目标 */
+  dailyGoal?: number
 }
 
 /** 定时日程：按钟点触发（每天/每周几/一次性），与间隔提醒分开管理 */
@@ -26,6 +28,8 @@ export interface ScheduleItem {
   texts: string[]
   /** 夜间文案（22:00-06:00 优先使用）；为空回退 texts */
   nightTexts?: string[]
+  /** 每日打卡目标次数（1-99）；为空不设目标 */
+  dailyGoal?: number
   /** 忽略安静时段（如 23:00 睡前提醒落在安静时段内） */
   ignoreQuiet: boolean
 }
@@ -107,6 +111,8 @@ export interface ReminderPayload {
   volume: number
   /** 自定义音频地址（media:// 协议），未配置时为空 */
   audioUrl?: string
+  /** 来源提醒项 id，用于打卡 */
+  itemId?: string
 }
 
 /** 选择自定义音频的结果 */
@@ -120,3 +126,14 @@ export interface AudioChoiceResult {
 
 /** 自动更新状态 */
 export type UpdateStatus = 'idle' | 'checking' | 'downloading' | 'downloaded' | 'up-to-date' | 'error' | 'unsupported'
+
+/** 统计页数据 */
+export interface StatsSummary {
+  /** 近一年每日打卡次数 */
+  checkinsPerDay: Array<{ date: string; count: number }>
+  /** 每日活跃分钟数 */
+  activeMinutes: Record<string, number>
+  /** 今日各提醒项打卡次数 */
+  todayByItem: Record<string, number>
+  todayTotal: number
+}

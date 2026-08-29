@@ -2,14 +2,17 @@ import { Menu, Tray, app, nativeImage, type MenuItemConstructorOptions, type Nat
 import { join } from 'node:path'
 import { getConfig } from './store'
 import { inQuietHours } from '@shared/quiet'
+import { todayCheckinCount } from './stats'
 import type { Scheduler } from './scheduler'
 
 export interface TrayHandlers {
   onRemindNow: (itemId: string) => void
+  onCheckinNow: (itemId: string) => void
   onApplyProfile: (id: string) => void
   onTogglePause: () => void
   onOpenSettings: () => void
   onOpenHistory: () => void
+  onOpenStats: () => void
 }
 
 let tray: Tray | null = null
@@ -24,10 +27,15 @@ function statusText(scheduler: Scheduler): string {
     return `Notify：安静时段（至 ${cfg.quietEnd}）`
   }
   const due = scheduler.nextDue()
-  if (!due) return 'Notify：无已启用的提醒'
-  const name =
-    cfg.reminders.find((r) => r.id === due.id)?.name ?? cfg.schedules.find((s) => s.id === due.id)?.name ?? ''
-  return `Notify：${name ? `${name} ` : ''}${scheduler.nextInMinutes()} 分钟后提醒`
+  const base = due
+    ? (() => {
+        const name =
+          cfg.reminders.find((r) => r.id === due.id)?.name ?? cfg.schedules.find((s) => s.id === due.id)?.name ?? ''
+        return `${name ? `${name} ` : ''}${scheduler.nextInMinutes()} 分钟后提醒`
+      })()
+    : '无已启用的提醒'
+  const checked = todayCheckinCount()
+  return checked > 0 ? `Notify：${base} · 今日已打卡 ${checked} 次` : `Notify：${base}`
 }
 
 /** 立即提醒子菜单：定时日程在前、间隔提醒在后 */
@@ -39,6 +47,19 @@ function remindSubmenu(handlers: TrayHandlers): MenuItemConstructorOptions {
   ]
   return {
     label: '立即提醒一次',
+    submenu: entries.length ? entries : [{ label: '（无已启用的提醒）', enabled: false }]
+  }
+}
+
+/** 补打卡子菜单：手动记一笔（漏点弹幕时用） */
+function checkinSubmenu(handlers: TrayHandlers): MenuItemConstructorOptions {
+  const cfg = getConfig()
+  const entries: MenuItemConstructorOptions[] = [
+    ...cfg.schedules.filter((s) => s.enabled).map((s) => ({ label: s.name, click: () => handlers.onCheckinNow(s.id) })),
+    ...cfg.reminders.filter((r) => r.enabled).map((r) => ({ label: r.name, click: () => handlers.onCheckinNow(r.id) }))
+  ]
+  return {
+    label: '补打卡',
     submenu: entries.length ? entries : [{ label: '（无已启用的提醒）', enabled: false }]
   }
 }
@@ -65,9 +86,11 @@ function buildMenu(handlers: TrayHandlers, scheduler: Scheduler): Menu {
     { label: statusText(scheduler), enabled: false },
     { type: 'separator' },
     remindSubmenu(handlers),
+    checkinSubmenu(handlers),
     profileSubmenu(handlers),
     { label: cfg.paused ? '恢复提醒' : '暂停提醒', click: handlers.onTogglePause },
     { type: 'separator' },
+    { label: '打卡统计', click: handlers.onOpenStats },
     { label: '弹幕历史', click: handlers.onOpenHistory },
     { label: '打开设置', click: handlers.onOpenSettings },
     { label: '退出 Notify', click: () => app.quit() }

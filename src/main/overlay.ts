@@ -6,7 +6,7 @@ const windows = new Map<number, BrowserWindow>()
 let primaryId: number | null = null
 
 function createOverlayFor(display: Display): void {
-  const { x, y, width, height } = display.bounds
+  const { x, y, width, height } = display.workArea
   const win = new BrowserWindow({
     x,
     y,
@@ -34,7 +34,8 @@ function createOverlayFor(display: Display): void {
 
   win.setAlwaysOnTop(true, 'screen-saver')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-  win.setIgnoreMouseEvents(true)
+  // forward=true：穿透时仍把鼠标移动转发给渲染层，用于检测悬停弹幕（打卡按钮）
+  win.setIgnoreMouseEvents(true, { forward: true })
   win.once('ready-to-show', () => win.show())
   void win.loadURL(rendererUrl('/overlay'))
   windows.set(display.id, win)
@@ -63,15 +64,24 @@ export function registerDisplayEvents(): void {
   screen.on('display-metrics-changed', refresh)
 }
 
+/** 切换穿透；悬停弹幕按钮时关闭穿透以接收点击 */
+export function setOverlayIgnoreMouse(ignore: boolean): void {
+  for (const win of windows.values()) {
+    if (win.isDestroyed()) continue
+    win.setIgnoreMouseEvents(ignore, { forward: true })
+  }
+}
+
 /** 向所有屏幕广播弹幕；提示音只由主屏窗口播放，避免重复发声 */
-export function sendReminder(text: string, soundEnabled: boolean, volume: number, audioUrl?: string): void {
+export function sendReminder(text: string, soundEnabled: boolean, volume: number, audioUrl?: string, itemId?: string): void {
   for (const [id, win] of windows) {
     if (win.isDestroyed()) continue
     const payload: ReminderPayload = {
       text,
       sound: soundEnabled && id === primaryId,
       volume,
-      audioUrl
+      audioUrl,
+      itemId
     }
     win.webContents.send('notify:reminder', payload)
   }

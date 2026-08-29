@@ -1,10 +1,10 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { Config, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
 import { pickText } from '@shared/templates'
 import { inQuietHours } from '@shared/quiet'
 import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig, wasConfigCorrupted } from './store'
 import { Scheduler } from './scheduler'
-import { createOverlays, registerDisplayEvents, sendReminder } from './overlay'
+import { createOverlays, registerDisplayEvents, sendReminder, setOverlayIgnoreMouse } from './overlay'
 import { openSettings, usesNativeMaterial } from './settings-window'
 import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
@@ -13,6 +13,9 @@ import { initAutoUpdater, registerUpdateIpc } from './updater'
 import { festivalGreeting } from './festivals'
 import { addHistory, getHistory } from './history'
 import { openHistory } from './history-window'
+import { openStats } from './stats-window'
+import { addCheckin, getStats, startUsageTracking, todayCountFor } from './stats'
+import { writeFile } from 'node:fs/promises'
 
 let scheduler: Scheduler
 /** 节日祝福只附加在当天第一条弹幕上 */
@@ -62,7 +65,7 @@ function remind(entry: ItemEntry | null, manual = false): void {
         festivalShownOn = todayStr()
       }
     }
-    sendReminder(text, cfg.soundEnabled, cfg.volume, audioUrl())
+    sendReminder(text, cfg.soundEnabled, cfg.volume, audioUrl(), entry?.item.id)
     addHistory({ text, name: entry?.item.name, at: Date.now() })
   }
   refreshTray(handlers, scheduler)
@@ -132,6 +135,18 @@ const handlers: TrayHandlers = {
       scheduler.resetItem(entry.item.id)
     }
   },
+  /** 托盘补打卡：记一笔并用弹幕确认（带今日进度） */
+  onCheckinNow: (itemId: string) => {
+    const entry = findItem(itemId)
+    if (!entry) return
+    addCheckin(entry.item.id)
+    const goal = entry.item.dailyGoal
+    const done = todayCountFor(entry.item.id)
+    const progress = goal ? `（今日 ${done}/${goal}）` : `（今日 ${done} 次）`
+    sendReminder(`已补打卡：${entry.item.name}${progress}`, false, 0, undefined)
+    addHistory({ text: `补打卡 ${entry.item.name}${progress}`, name: entry.item.name, at: Date.now() })
+    refreshTray(handlers, scheduler)
+  },
   onApplyProfile: (id: string) => {
     applyProfile(id)
   },
@@ -140,7 +155,8 @@ const handlers: TrayHandlers = {
     applyConfig(next)
   },
   onOpenSettings: () => openSettings(),
-  onOpenHistory: () => openHistory()
+  onOpenHistory: () => openHistory(),
+  onOpenStats: () => openStats()
 }
 
 // 自定义媒体协议必须在 app ready 前注册
@@ -177,6 +193,7 @@ if (!app.requestSingleInstanceLock()) {
     createTray(handlers, scheduler)
     handleMediaProtocol()
     registerAudioIpc()
+    startUsageTracking()
 
     if (process.argv.includes('--remind-now')) {
       setTimeout(() => remind(findItem(undefined), true), 1500)
@@ -209,6 +226,22 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('app:version', () => app.getVersion())
     ipcMain.handle('history:get', () => getHistory())
     ipcMain.handle('ui:env', () => ({ nativeMaterial: usesNativeMaterial() }))
+    ipcMain.on('overlay:set-ignore', (_event, ignore: boolean) => setOverlayIgnoreMouse(Boolean(ignore)))
+    ipcMain.handle('checkin', (_event, itemId: string) => {
+      addCheckin(String(itemId))
+      refreshTray(handlers, scheduler)
+    })
+    ipcMain.handle('stats:get', () => getStats())
+    ipcMain.handle('stats:export', async () => {
+      const result = await dialog.showSaveDialog({
+        title: '导出统计数据',
+        defaultPath: `notify-stats-${new Date().toISOString().slice(0, 10)}.json`,
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      })
+      if (result.canceled || !result.filePath) return { canceled: true }
+      await writeFile(result.filePath, JSON.stringify(getStats(), null, 2), 'utf-8')
+      return { canceled: false }
+    })
     ipcMain.handle('open:external', (_event, url: string) => {
       // 只允许打开 GitHub 相关链接，防任意跳转
       if (/^https:\/\/(www\.)?github\.com\/JudyOne1\/SoftNotify/.test(url)) void shell.openExternal(url)

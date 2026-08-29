@@ -207,7 +207,25 @@ function ScheduleCard({
         onChange={(e) => setTexts(e.target.value)}
         onBlur={commit}
       />
-      <div className="mt-1.5 flex justify-end gap-1">
+      <div className="mt-1.5 flex items-center justify-end gap-2">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          每日目标
+          <input
+            key={`${item.id}-${item.dailyGoal ?? ''}`}
+            type="number"
+            min={1}
+            max={99}
+            defaultValue={item.dailyGoal ?? ''}
+            placeholder="不限"
+            className="h-6 w-14 rounded-md bg-transparent px-1.5 text-center text-xs shadow-[var(--neu-inset-sm)] outline-none"
+            onBlur={(e) => {
+              const v = Math.round(Number(e.target.value))
+              onChange({ dailyGoal: Number.isFinite(v) && v >= 1 ? v : undefined })
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          />
+          次
+        </label>
         <Button variant="link" size="sm" className="h-auto text-muted-foreground hover:text-foreground" onClick={() => setNightOpen(!nightOpen)}>
           {nightOpen ? '收起夜间文案' : item.nightTexts?.length ? '夜间文案 ●' : '夜间文案'}
         </Button>
