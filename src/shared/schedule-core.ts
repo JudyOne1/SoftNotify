@@ -33,6 +33,29 @@ export function computeIntervalAt(intervalMinutes: number, now: Date = new Date(
 }
 
 /**
+ * 锚点顺延：返回锚点后（严格晚于 from）的第 k 个整周期时刻。
+ * 例：锚点 09:00、间隔 1h、from 12:20 → 13:00。
+ */
+export function computeAnchoredNext(anchorAt: number, intervalMs: number, fromMs: number): number {
+  if (!Number.isFinite(anchorAt) || intervalMs <= 0) return 0
+  if (anchorAt > fromMs) return anchorAt
+  const k = Math.floor((fromMs - anchorAt) / intervalMs) + 1
+  return anchorAt + k * intervalMs
+}
+
+/**
+ * 间隔秒数清洗：优先 intervalSeconds（5s ~ 7 天），缺失时从旧版 intervalMinutes（1-240 分钟）换算。
+ * 返回 0 表示输入无效。
+ */
+export function normalizeIntervalSeconds(intervalSeconds: unknown, legacyIntervalMinutes: unknown): number {
+  const s = Math.round(Number(intervalSeconds))
+  if (Number.isFinite(s) && s > 0) return Math.min(7 * 86_400, Math.max(5, s))
+  const m = Math.round(Number(legacyIntervalMinutes))
+  if (Number.isFinite(m) && m > 0) return Math.min(7 * 86_400, Math.max(1, m)) * 60
+  return 0
+}
+
+/**
  * 间隔抖动：把计划时刻在 ±ratio 范围内随机偏移，避免提醒变得可预测。
  * interval 间隔过短（<10 分钟）不抖动，保证测试与演示的确定性。
  */

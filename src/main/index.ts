@@ -157,7 +157,7 @@ const handlers: TrayHandlers = {
     const entry = findItem(itemId)
     remind(entry, true)
     const cfg = getConfig()
-    if (!cfg.paused && entry && 'intervalMinutes' in entry.item && entry.item.enabled) {
+    if (!cfg.paused && entry && 'intervalSeconds' in entry.item && entry.item.enabled) {
       scheduler.resetItem(entry.item.id)
     }
   },
@@ -255,6 +255,9 @@ if (!app.requestSingleInstanceLock()) {
     })
     ipcMain.handle('notify:test', (_event, itemId?: string) => {
       remind(findItem(itemId), true)
+    })
+    ipcMain.handle('remind:next', (_event, itemId: string) => {
+      return scheduler.nextAtFor(String(itemId))
     })
     ipcMain.handle('profile:apply', (_event, id: string) => applyProfile(String(id)))
     ipcMain.handle('profile:save', (_event, name: string) => saveProfile(String(name)))

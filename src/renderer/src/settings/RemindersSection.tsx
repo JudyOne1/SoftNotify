@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReminderItem, SoundPreset } from '@shared/types'
 import { REMINDER_PRESETS } from '@shared/templates'
 import { Button } from '@/components/ui/button'
@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { Wheel } from '@/components/ui/wheel'
+import { cn } from '@/lib/utils'
 import { newId } from './util'
-
-const INTERVAL_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240]
 
 const SOUND_PRESETS: Array<{ value: SoundPreset; label: string }> = [
   { value: 'classic', label: '经典双音' },
@@ -37,7 +37,7 @@ export default function RemindersSection({ reminders, onChange, onTest }: Props)
         id: newId(),
         name: preset?.name ?? '新提醒',
         enabled: true,
-        intervalMinutes: preset?.intervalMinutes ?? 30,
+        intervalSeconds: preset ? preset.intervalMinutes * 60 : 1800,
         texts: preset ? [...preset.texts] : []
       }
     ])
@@ -75,6 +75,27 @@ export default function RemindersSection({ reminders, onChange, onTest }: Props)
   )
 }
 
+function formatNext(at: number | null): string {
+  if (!at) return '—'
+  const d = new Date(at)
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (d.toDateString() === today.toDateString()) return hm
+  if (d.toDateString() === tomorrow.toDateString()) return `明天 ${hm}`
+  return `${d.getMonth() + 1}/${d.getDate()} ${hm}`
+}
+
+/** 间隔秒数 → 轮盘的天/时/分/秒分解 */
+function decompose(seconds: number): { d: number; h: number; m: number; s: number } {
+  const d = Math.floor(seconds / 86_400)
+  const h = Math.floor((seconds % 86_400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  return { d, h, m, s }
+}
+
 function ReminderCard({
   item,
   onChange,
@@ -90,8 +111,11 @@ function ReminderCard({
   const [texts, setTexts] = useState(item.texts.join('\n'))
   const [nightOpen, setNightOpen] = useState(false)
   const [nightTexts, setNightTexts] = useState((item.nightTexts ?? []).join('\n'))
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [nextAt, setNextAt] = useState<number | null>(null)
 
-  /** 失焦/回车提交草稿，避免每次按键被服务端清洗后打断输入 */
+  const { d, h, m, s } = decompose(item.intervalSeconds)
+
   function commit(): void {
     if (name !== item.name || texts !== item.texts.join('\n') || nightTexts !== (item.nightTexts ?? []).join('\n')) {
       onChange({
@@ -101,6 +125,30 @@ function ReminderCard({
       })
     }
   }
+
+  /** 轮盘变化 → 汇总为秒数（最小 5s） */
+  function setIntervalParts(part: Partial<{ d: number; h: number; m: number; s: number }>): void {
+    const cur = decompose(item.intervalSeconds)
+    const n = { ...cur, ...part }
+    const total = Math.max(5, n.d * 86_400 + n.h * 3600 + n.m * 60 + n.s)
+    onChange({ intervalSeconds: total })
+  }
+
+  /** 下次提醒时间：挂载/参数变化/每分钟刷新 */
+  useEffect(() => {
+    let alive = true
+    const refresh = (): void => {
+      void window.notifyAPI.nextFireFor(item.id).then((t) => {
+        if (alive) setNextAt(t)
+      })
+    }
+    refresh()
+    const timer = setInterval(refresh, 60_000)
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [item.id, item.intervalSeconds, item.anchorAt, item.enabled])
 
   return (
     <div className={`rounded-lg bg-card p-3.5 shadow-[var(--neu-raised)] transition-[filter] hover:brightness-110 ${item.enabled ? '' : 'opacity-55'}`}>
@@ -115,25 +163,7 @@ function ReminderCard({
           onBlur={commit}
           onKeyDown={(e) => e.key === 'Enter' && commit()}
         />
-        <Select
-          value={String(item.intervalMinutes)}
-          onValueChange={(v) => onChange({ intervalMinutes: Number(v) })}
-        >
-          <SelectTrigger className="text-[13px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {INTERVAL_OPTIONS.map((m) => (
-              <SelectItem key={m} value={String(m)}>
-                {m < 60 ? `${m} 分钟` : `${m / 60} 小时`}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={item.priority ?? 'normal'}
-          onValueChange={(v) => onChange({ priority: v === 'high' ? 'high' : undefined })}
-        >
+        <Select value={item.priority ?? 'normal'} onValueChange={(v) => onChange({ priority: v === 'high' ? 'high' : undefined })}>
           <SelectTrigger className="text-[13px]" title="重要提醒更大更慢，可联动系统通知">
             <SelectValue />
           </SelectTrigger>
@@ -142,70 +172,129 @@ function ReminderCard({
             <SelectItem value="high">重要</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="destructive" size="icon" title="删除" onClick={onDelete}>
-          ✕
-        </Button>
       </div>
+
+      {/* 间隔轮盘：天/时/分/秒 + 下次提醒 */}
+      <div className="mt-3 flex items-start gap-2">
+        <div className="grid flex-1 grid-cols-4 gap-1.5">
+          <Wheel label="天" value={d} min={0} max={7} onChange={(v) => setIntervalParts({ d: v })} />
+          <Wheel label="时" value={h} min={0} max={23} onChange={(v) => setIntervalParts({ h: v })} />
+          <Wheel label="分" value={m} min={0} max={59} onChange={(v) => setIntervalParts({ m: v })} />
+          <Wheel label="秒" value={s} min={0} max={59} step={5} onChange={(v) => setIntervalParts({ s: v })} />
+        </div>
+        <div className="flex w-[104px] flex-none flex-col gap-1.5 pt-0.5">
+          <div className="text-[11px] text-muted-foreground">下次提醒</div>
+          <div className="text-sm font-semibold tabular-nums">{formatNext(nextAt)}</div>
+          <Input
+            type="datetime-local"
+            title="设置起始计算时间，此后按间隔顺延"
+            className="h-7 px-1.5 text-xs"
+            value={item.anchorAt ? toLocalInput(item.anchorAt) : ''}
+            onChange={(e) => {
+              const t = new Date(e.target.value).getTime()
+              onChange({ anchorAt: Number.isFinite(t) && t > 0 ? t : undefined })
+            }}
+          />
+          {item.anchorAt && (
+            <button
+              type="button"
+              className="cursor-pointer text-left text-[11px] text-muted-foreground hover:text-primary"
+              onClick={() => onChange({ anchorAt: undefined })}
+            >
+              ↻ 清除锚点，从现在起算
+            </button>
+          )}
+        </div>
+      </div>
+
       <Textarea
-        rows={3}
+        rows={2}
         className="mt-2.5"
         value={texts}
         placeholder="每行一条弹幕文案，留空则使用内置通用文案"
         onChange={(e) => setTexts(e.target.value)}
         onBlur={commit}
       />
-      <div className="mt-1.5 flex items-center justify-end gap-2">
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          每日目标
-          <input
-            key={`${item.id}-${item.dailyGoal ?? ''}`}
-            type="number"
-            min={1}
-            max={99}
-            defaultValue={item.dailyGoal ?? ''}
-            placeholder="不限"
-            className="h-6 w-14 rounded-md bg-transparent px-1.5 text-center text-xs shadow-[var(--neu-inset-sm)] outline-none"
-            onBlur={(e) => {
-              const v = Math.round(Number(e.target.value))
-              onChange({ dailyGoal: Number.isFinite(v) && v >= 1 ? v : undefined })
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-          />
-          次
-        </label>
-        <Select
-          value={item.soundPreset ?? 'global'}
-          onValueChange={(v) => onChange({ soundPreset: v === 'global' ? undefined : (v as SoundPreset) })}
-        >
-          <SelectTrigger className="text-xs" title="提示音音色">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="global">跟随全局</SelectItem>
-            {SOUND_PRESETS.map((p) => (
-              <SelectItem key={p.value} value={p.value}>
-                {p.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="link" size="sm" className="h-auto text-muted-foreground hover:text-foreground" onClick={() => setNightOpen(!nightOpen)}>
-          {nightOpen ? '收起夜间文案' : item.nightTexts?.length ? '夜间文案 ●' : '夜间文案'}
+
+      <div className="mt-1.5 flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => setMoreOpen(!moreOpen)}>
+          更多 {moreOpen ? '▴' : '▾'}
         </Button>
         <Button variant="link" size="sm" className="h-auto" onClick={() => onTest(item.id)}>
           试一下
         </Button>
       </div>
-      {nightOpen && (
-        <Textarea
-          rows={2}
-          className="mt-1"
-          value={nightTexts}
-          placeholder="22:00-06:00 触发时优先使用，每行一条，留空沿用上面的文案"
-          onChange={(e) => setNightTexts(e.target.value)}
-          onBlur={commit}
-        />
-      )}
+
+      {/* 更多设置：动效展开 */}
+      <div className={cn('grid transition-all duration-200', moreOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+        <div className="overflow-hidden">
+          <div className="mt-1 flex flex-col gap-2.5 border-t border-border/40 pt-2.5">
+            <label className="flex items-center justify-between text-xs text-muted-foreground">
+              每日目标
+              <span className="flex items-center gap-1.5">
+                <input
+                  key={`${item.id}-${item.dailyGoal ?? ''}`}
+                  type="number"
+                  min={1}
+                  max={99}
+                  defaultValue={item.dailyGoal ?? ''}
+                  placeholder="不限"
+                  className="h-7 w-16 rounded-md bg-transparent px-1.5 text-center text-xs text-foreground shadow-[var(--neu-inset-sm)] outline-none"
+                  onBlur={(e) => {
+                    const v = Math.round(Number(e.target.value))
+                    onChange({ dailyGoal: Number.isFinite(v) && v >= 1 ? v : undefined })
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                />
+                次
+              </span>
+            </label>
+            <label className="flex items-center justify-between text-xs text-muted-foreground">
+              提示音色
+              <Select
+                value={item.soundPreset ?? 'global'}
+                onValueChange={(v) => onChange({ soundPreset: v === 'global' ? undefined : (v as SoundPreset) })}
+              >
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="global">跟随全局</SelectItem>
+                  {SOUND_PRESETS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              夜间文案（22:00-06:00 优先）
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setNightOpen(!nightOpen)}>
+                {nightOpen ? '收起' : item.nightTexts?.length ? '已设置 ●' : '设置'}
+              </Button>
+            </div>
+            {nightOpen && (
+              <Textarea
+                rows={2}
+                value={nightTexts}
+                placeholder="每行一条，留空沿用上面的文案"
+                onChange={(e) => setNightTexts(e.target.value)}
+                onBlur={commit}
+              />
+            )}
+            <Button variant="destructive" size="sm" className="justify-center" onClick={onDelete}>
+              删除该提醒
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
+}
+
+function toLocalInput(ms: number): string {
+  const dt = new Date(ms)
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
 }

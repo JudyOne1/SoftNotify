@@ -21,7 +21,7 @@ const BUNDLES: Array<{
         id: newId(),
         name: p.name,
         enabled: true,
-        intervalMinutes: p.intervalMinutes,
+        intervalSeconds: p.intervalMinutes * 60,
         texts: [...p.texts]
       })),
       schedules: [
@@ -46,7 +46,7 @@ const BUNDLES: Array<{
         id: newId(),
         name: p.name,
         enabled: true,
-        intervalMinutes: 45,
+        intervalSeconds: 2700,
         texts: [...p.texts]
       })),
       schedules: [
@@ -67,7 +67,7 @@ const BUNDLES: Array<{
     title: '极简',
     desc: '只保留每小时喝一次水',
     build: () => ({
-      reminders: [{ id: newId(), name: '喝水', enabled: true, intervalMinutes: 60, texts: [] }],
+      reminders: [{ id: newId(), name: '喝水', enabled: true, intervalSeconds: 3600, texts: [] }],
       schedules: [] as ScheduleItem[]
     })
   }

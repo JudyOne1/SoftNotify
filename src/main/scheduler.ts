@@ -1,25 +1,29 @@
 import { powerMonitor } from 'electron'
 import type { ReminderItem, ScheduleItem } from '@shared/types'
-import { applyJitter, computeIntervalAt, computeScheduleAt } from '@shared/schedule-core'
+import { applyJitter, computeAnchoredNext, computeIntervalAt, computeScheduleAt } from '@shared/schedule-core'
 
 type Source = 'reminder' | 'schedule'
 
 /**
- * 双源调度：间隔提醒（r:id）按固定周期（可带抖动），定时日程（s:id）按钟点。
+ * 双源调度：间隔提醒（r:id，秒级间隔，可带锚点与抖动），定时日程（s:id，按钟点）。
  * 单定时器只对准最近的下一次触发；sync 按 key+签名 差量更新，改某项不重置其他项。
  * 时刻计算全部在 shared/schedule-core.ts（纯函数，可单测）。
+ *
+ * 锚点（anchorAt）：有锚点的项按「锚点 + N×间隔」对齐排期且持久化（重启不丢相位）；
+ * 无锚点的项「从现在起算」并可加抖动。
  */
 export class Scheduler {
   private timer: NodeJS.Timeout | null = null
   /** 每个已启用项的下一次触发时间（epoch ms） */
   private nextAt = new Map<string, number>()
-  /** 变更检测签名：间隔值 / time+weekdays+date */
+  /** 变更检测签名 */
   private sigs = new Map<string, string>()
   private intervalsMs = new Map<string, number>()
+  private anchors = new Map<string, number>()
   private scheduleItems = new Map<string, ScheduleItem>()
   /** 休眠错过提醒的策略：'fire' 唤醒后补发，'skip' 丢弃 */
   missedPolicy: 'fire' | 'skip' = 'fire'
-  /** 间隔抖动比例（0-0.5），0 关闭 */
+  /** 间隔抖动比例（0-0.5），0 关闭；有锚点的项不抖动（保持整点对齐） */
   jitterRatio = 0
 
   constructor(private readonly onRemind: (source: Source, itemId: string) => void) {
@@ -29,7 +33,7 @@ export class Scheduler {
   sync(reminders: ReminderItem[], schedules: ScheduleItem[]): void {
     const desired = new Map<string, string>()
     for (const r of reminders) {
-      if (r.enabled) desired.set(`r:${r.id}`, String(r.intervalMinutes))
+      if (r.enabled) desired.set(`r:${r.id}`, `${r.intervalSeconds}|${r.anchorAt ?? ''}`)
     }
     for (const s of schedules) {
       if (s.enabled) desired.set(`s:${s.id}`, `${s.time}|${[...s.weekdays].sort().join(',')}|${s.date ?? ''}`)
@@ -43,17 +47,23 @@ export class Scheduler {
 
     const now = Date.now()
     this.scheduleItems.clear()
+    this.anchors.clear()
     for (const s of schedules) {
       if (s.enabled) this.scheduleItems.set(s.id, s)
+    }
+    for (const r of reminders) {
+      if (r.enabled && r.anchorAt) this.anchors.set(`r:${r.id}`, r.anchorAt)
     }
 
     for (const [key, sig] of desired) {
       if (this.nextAt.has(key)) continue
       const nowDate = new Date(now)
       if (key.startsWith('r:')) {
-        const minutes = Number(sig)
-        this.intervalsMs.set(key, minutes * 60_000)
-        this.nextAt.set(key, this.jitteredInterval(minutes, nowDate))
+        const [secStr, anchorStr] = sig.split('|')
+        const ms = Number(secStr) * 1000
+        this.intervalsMs.set(key, ms)
+        const anchor = anchorStr ? Number(anchorStr) : 0
+        this.nextAt.set(key, this.nextIntervalAt(ms, anchor, nowDate))
       } else {
         const item = this.scheduleItems.get(key.slice(2))
         if (!item) continue
@@ -70,17 +80,23 @@ export class Scheduler {
     this.nextAt.clear()
     this.sigs.clear()
     this.intervalsMs.clear()
+    this.anchors.clear()
     this.scheduleItems.clear()
   }
 
-  /** 手动触发后重置间隔项的周期；定时日程按钟点触发，无需重置 */
+  /** 手动触发后重置间隔项的周期（有锚点则回到锚点对齐的下一次） */
   resetItem(itemId: string): void {
     const key = `r:${itemId}`
     const ms = this.intervalsMs.get(key)
     if (ms && this.nextAt.has(key)) {
-      this.nextAt.set(key, this.jitteredInterval(ms / 60_000, new Date()))
+      this.nextAt.set(key, this.nextIntervalAt(ms, this.anchors.get(key) ?? 0, new Date()))
       this.arm()
     }
+  }
+
+  /** 某间隔项的下一次触发时刻（设置界面展示「下次提醒」用）；无则 null */
+  nextAtFor(itemId: string): number | null {
+    return this.nextAt.get(`r:${itemId}`) ?? null
   }
 
   /** 距最近一次提醒的分钟数（向上取整），无已启用项时返回 0 */
@@ -103,9 +119,12 @@ export class Scheduler {
     return null
   }
 
-  /** 间隔周期 + 抖动 */
-  private jitteredInterval(intervalMinutes: number, now: Date): number {
-    return applyJitter(computeIntervalAt(intervalMinutes, now), intervalMinutes * 60_000, this.jitterRatio)
+  /** 间隔项的下一次触发：有锚点按锚点对齐（不抖动），无锚点从现在起算（可抖动） */
+  private nextIntervalAt(intervalMs: number, anchorAt: number, now: Date): number {
+    if (anchorAt > 0) {
+      return computeAnchoredNext(anchorAt, intervalMs, now.getTime())
+    }
+    return applyJitter(computeIntervalAt(intervalMs / 60_000, now), intervalMs, this.jitterRatio)
   }
 
   private earliest(): number | null {
@@ -136,11 +155,17 @@ export class Scheduler {
 
   private fire(key: string): void {
     this.timer = null
-    const now = Date.now()
+    const firedAt = Date.now()
     if (key.startsWith('r:')) {
       const ms = this.intervalsMs.get(key)
       if (!ms) return
-      this.nextAt.set(key, this.jitteredInterval(ms / 60_000, new Date(now)))
+      const anchor = this.anchors.get(key) ?? 0
+      // 有锚点：从刚触发的计划时刻对齐下一个周期；无锚点：从现在起算 + 抖动
+      const prevPlanned = this.nextAt.get(key) ?? firedAt
+      this.nextAt.set(
+        key,
+        anchor > 0 ? computeAnchoredNext(anchor, ms, Math.min(prevPlanned, firedAt)) : this.nextIntervalAt(ms, 0, new Date(firedAt))
+      )
       this.onRemind('reminder', key.slice(2))
     } else {
       const item = this.scheduleItems.get(key.slice(2))
@@ -150,8 +175,8 @@ export class Scheduler {
         // 一次性日程：触发后不再排期，由主进程停用
         this.nextAt.delete(key)
       } else {
-        const next = computeScheduleAt(item, new Date(now))
-        if (next > now) this.nextAt.set(key, next)
+        const next = computeScheduleAt(item, new Date(firedAt))
+        if (next > firedAt) this.nextAt.set(key, next)
       }
     }
     this.arm()
@@ -166,7 +191,7 @@ export class Scheduler {
       if (this.missedPolicy === 'fire') this.onRemind(key.startsWith('r:') ? 'reminder' : 'schedule', key.slice(2))
       if (key.startsWith('r:')) {
         const ms = this.intervalsMs.get(key)
-        if (ms) this.nextAt.set(key, this.jitteredInterval(ms / 60_000, new Date(now)))
+        if (ms) this.nextAt.set(key, this.nextIntervalAt(ms, this.anchors.get(key) ?? 0, new Date(now)))
       } else {
         const item = this.scheduleItems.get(key.slice(2))
         const next = item && !item.date ? computeScheduleAt(item, new Date(now)) : 0

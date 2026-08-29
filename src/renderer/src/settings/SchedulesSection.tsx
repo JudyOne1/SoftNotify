@@ -119,6 +119,7 @@ function ScheduleCard({
   const [texts, setTexts] = useState(item.texts.join('\n'))
   const [nightOpen, setNightOpen] = useState(false)
   const [nightTexts, setNightTexts] = useState((item.nightTexts ?? []).join('\n'))
+  const [moreOpen, setMoreOpen] = useState(false)
 
   function commit(): void {
     if (name !== item.name || texts !== item.texts.join('\n') || nightTexts !== (item.nightTexts ?? []).join('\n')) {
@@ -173,9 +174,6 @@ function ScheduleCard({
             <SelectItem value="high">重要</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="destructive" size="icon" title="删除" onClick={onDelete}>
-          ✕
-        </Button>
       </div>
       <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
         <Label className="text-[13px] text-muted-foreground">
@@ -228,58 +226,84 @@ function ScheduleCard({
         onChange={(e) => setTexts(e.target.value)}
         onBlur={commit}
       />
-      <div className="mt-1.5 flex items-center justify-end gap-2">
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          每日目标
-          <input
-            key={`${item.id}-${item.dailyGoal ?? ''}`}
-            type="number"
-            min={1}
-            max={99}
-            defaultValue={item.dailyGoal ?? ''}
-            placeholder="不限"
-            className="h-6 w-14 rounded-md bg-transparent px-1.5 text-center text-xs shadow-[var(--neu-inset-sm)] outline-none"
-            onBlur={(e) => {
-              const v = Math.round(Number(e.target.value))
-              onChange({ dailyGoal: Number.isFinite(v) && v >= 1 ? v : undefined })
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-          />
-          次
-        </label>
-        <Select
-          value={item.soundPreset ?? 'global'}
-          onValueChange={(v) => onChange({ soundPreset: v === 'global' ? undefined : (v as SoundPreset) })}
-        >
-          <SelectTrigger className="h-7 text-xs" title="提示音音色">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="global">跟随全局</SelectItem>
-            {SOUND_PRESETS.map((p) => (
-              <SelectItem key={p.value} value={p.value}>
-                {p.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="link" size="sm" className="h-auto text-muted-foreground hover:text-foreground" onClick={() => setNightOpen(!nightOpen)}>
-          {nightOpen ? '收起夜间文案' : item.nightTexts?.length ? '夜间文案 ●' : '夜间文案'}
+      <div className="mt-1.5 flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => setMoreOpen(!moreOpen)}>
+          更多 {moreOpen ? '▴' : '▾'}
         </Button>
         <Button variant="link" size="sm" className="h-auto" onClick={() => onTest(item.id)}>
           试一下
         </Button>
       </div>
-      {nightOpen && (
-        <Textarea
-          rows={2}
-          className="mt-1"
-          value={nightTexts}
-          placeholder="22:00-06:00 触发时优先使用，每行一条，留空沿用上面的文案"
-          onChange={(e) => setNightTexts(e.target.value)}
-          onBlur={commit}
-        />
-      )}
+
+      {/* 更多设置：动效展开 */}
+      <div className={cn('grid transition-all duration-200', moreOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+        <div className="overflow-hidden">
+          <div className="mt-1 flex flex-col gap-2.5 border-t border-border/40 pt-2.5">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              忽略安静时段
+              <Switch checked={item.ignoreQuiet} onCheckedChange={(v) => onChange({ ignoreQuiet: v })} />
+            </div>
+            <label className="flex items-center justify-between text-xs text-muted-foreground">
+              每日目标
+              <span className="flex items-center gap-1.5">
+                <input
+                  key={`${item.id}-${item.dailyGoal ?? ''}`}
+                  type="number"
+                  min={1}
+                  max={99}
+                  defaultValue={item.dailyGoal ?? ''}
+                  placeholder="不限"
+                  className="h-7 w-16 rounded-md bg-transparent px-1.5 text-center text-xs text-foreground shadow-[var(--neu-inset-sm)] outline-none"
+                  onBlur={(e) => {
+                    const v = Math.round(Number(e.target.value))
+                    onChange({ dailyGoal: Number.isFinite(v) && v >= 1 ? v : undefined })
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                />
+                次
+              </span>
+            </label>
+            <label className="flex items-center justify-between text-xs text-muted-foreground">
+              提示音色
+              <Select
+                value={item.soundPreset ?? 'global'}
+                onValueChange={(v) => onChange({ soundPreset: v === 'global' ? undefined : (v as SoundPreset) })}
+              >
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="global">跟随全局</SelectItem>
+                  {SOUND_PRESETS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              夜间文案（22:00-06:00 优先）
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setNightOpen(!nightOpen)}>
+                {nightOpen ? '收起' : item.nightTexts?.length ? '已设置 ●' : '设置'}
+              </Button>
+            </div>
+            {nightOpen && (
+              <Textarea
+                rows={2}
+                className="mt-0"
+                value={nightTexts}
+                placeholder="每行一条，留空沿用上面的文案"
+                onChange={(e) => setNightTexts(e.target.value)}
+                onBlur={commit}
+              />
+            )}
+            <Button variant="destructive" size="sm" className="justify-center" onClick={onDelete}>
+              删除该日程
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

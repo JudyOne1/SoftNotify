@@ -7,8 +7,13 @@ export interface ReminderItem {
   /** 显示名，如「喝水」「护眼」「拉伸」 */
   name: string
   enabled: boolean
-  /** 提醒间隔（分钟），1-240 */
-  intervalMinutes: number
+  /** 提醒间隔（秒），5 ~ 7 天 */
+  intervalSeconds: number
+  /**
+   * 起始锚点（epoch ms）：下次提醒 = 锚点后第一个整周期，后续按间隔顺延；
+   * 为空表示「从现在起算」。持久化，重启后仍按锚点排程。
+   */
+  anchorAt?: number
   /** 自定义文案，随机抽取；为空时回退内置通用文案 */
   texts: string[]
   /** 夜间文案（22:00-06:00 优先使用）；为空回退 texts */

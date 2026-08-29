@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { migrateLegacyProfiles } from '@shared/profile-core'
+import { normalizeIntervalSeconds } from '@shared/schedule-core'
 import type { Config, DanmakuStyle, Profile, ReminderItem, ScheduleItem, SoundPreset } from '@shared/types'
 
 const SOUND_PRESET_VALUES: SoundPreset[] = ['classic', 'windchime', 'water', 'knock', 'musicbox']
@@ -11,7 +12,7 @@ export const MAX_SCHEDULES = 20
 export const MAX_PROFILES = 10
 
 export const DEFAULT_CONFIG: Config = {
-  reminders: [{ id: 'water', name: '喝水', enabled: true, intervalMinutes: 60, texts: [] }],
+  reminders: [{ id: 'water', name: '喝水', enabled: true, intervalSeconds: 3600, texts: [] }],
   schedules: [],
   profiles: [],
   activeProfile: null,
@@ -58,12 +59,6 @@ export function isFreshConfig(): boolean {
 
 export function wasConfigCorrupted(): boolean {
   return corrupted
-}
-
-function clampInterval(value: unknown): number {
-  const n = Math.round(Number(value))
-  if (!Number.isFinite(n)) return 60
-  return Math.min(240, Math.max(1, n))
 }
 
 /** 校验 HH:MM，非法回退 09:00 */
@@ -120,6 +115,8 @@ function normalizeItemCommon(seen: Set<string>, raw: Record<string, unknown>) {
   const priority = raw['priority'] === 'high' ? 'high' as const : undefined
   const preset = raw['soundPreset']
   const soundPreset = SOUND_PRESET_VALUES.includes(preset as SoundPreset) ? (preset as SoundPreset) : undefined
+  const anchorRaw = Number(raw['anchorAt'])
+  const anchorAt = Number.isFinite(anchorRaw) && anchorRaw > 0 ? anchorRaw : undefined
   return {
     id,
     name: name || '提醒',
@@ -128,7 +125,8 @@ function normalizeItemCommon(seen: Set<string>, raw: Record<string, unknown>) {
     nightTexts: nightTexts.length ? nightTexts : undefined,
     ...(dailyGoal ? { dailyGoal } : {}),
     ...(priority ? { priority } : {}),
-    ...(soundPreset ? { soundPreset } : {})
+    ...(soundPreset ? { soundPreset } : {}),
+    ...(anchorAt ? { anchorAt } : {})
   }
 }
 
@@ -140,7 +138,11 @@ export function normalizeReminders(input: unknown): ReminderItem[] {
   for (const raw of input.slice(0, MAX_REMINDERS)) {
     if (!raw || typeof raw !== 'object') continue
     const base = normalizeItemCommon(seen, raw as Record<string, unknown>)
-    items.push({ ...base, intervalMinutes: clampInterval((raw as Record<string, unknown>)['intervalMinutes']) })
+    items.push({
+      ...base,
+      intervalSeconds:
+        normalizeIntervalSeconds((raw as Record<string, unknown>)['intervalSeconds'], (raw as Record<string, unknown>)['intervalMinutes']) || 3600
+    })
   }
   return items
 }

@@ -5,6 +5,7 @@ const api = {
   getConfig: (): Promise<Config> => ipcRenderer.invoke('config:get'),
   setConfig: (patch: Partial<Config>): Promise<Config> => ipcRenderer.invoke('config:set', patch),
   testReminder: (itemId?: string): Promise<void> => ipcRenderer.invoke('notify:test', itemId),
+  nextFireFor: (itemId: string): Promise<number | null> => ipcRenderer.invoke('remind:next', itemId),
   chooseAudio: (): Promise<AudioChoiceResult> => ipcRenderer.invoke('audio:choose'),
   applyProfile: (id: string): Promise<Config> => ipcRenderer.invoke('profile:apply', id),
   saveProfile: (name: string): Promise<Config> => ipcRenderer.invoke('profile:save', name),
