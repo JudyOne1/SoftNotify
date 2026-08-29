@@ -111,7 +111,7 @@ export default function OverlayApp(): React.JSX.Element {
       if (lanes.current[lane] > 2) lane = Math.floor(Math.random() * laneCount)
       lanes.current[lane]++
       setItems((prev) => [...prev, randomItem(payload.text, payload.itemId, payload.priority, configRef.current, lane)])
-      if (payload.sound) playReminderSound(payload.volume, payload.audioUrl)
+      if (payload.sound) playReminderSound(payload.volume, payload.audioUrl, payload.soundPreset)
     })
     // 必须退订：HMR/重挂载时监听叠加会导致一次提醒出多条弹幕
     return () => {

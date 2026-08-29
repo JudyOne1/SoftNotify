@@ -1,7 +1,9 @@
 import { app } from 'electron'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { Config, DanmakuStyle, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
+import type { Config, DanmakuStyle, Profile, ProfilePatch, ReminderItem, ScheduleItem, SoundPreset } from '@shared/types'
+
+const SOUND_PRESET_VALUES: SoundPreset[] = ['classic', 'windchime', 'water', 'knock', 'musicbox']
 
 export const MAX_REMINDERS = 20
 export const MAX_SCHEDULES = 20
@@ -33,7 +35,8 @@ export const DEFAULT_CONFIG: Config = {
   zoneEnd: 30,
   themeMode: 'system',
   audioMode: 'synth',
-  audioFileName: ''
+  audioFileName: '',
+  soundPreset: 'classic'
 }
 
 let cache: Config | null = null
@@ -112,6 +115,8 @@ function normalizeItemCommon(seen: Set<string>, raw: Record<string, unknown>) {
   const goalRaw = Number(raw['dailyGoal'])
   const dailyGoal = Number.isFinite(goalRaw) && goalRaw >= 1 ? Math.min(99, Math.round(goalRaw)) : undefined
   const priority = raw['priority'] === 'high' ? 'high' as const : undefined
+  const preset = raw['soundPreset']
+  const soundPreset = SOUND_PRESET_VALUES.includes(preset as SoundPreset) ? (preset as SoundPreset) : undefined
   return {
     id,
     name: name || '提醒',
@@ -119,7 +124,8 @@ function normalizeItemCommon(seen: Set<string>, raw: Record<string, unknown>) {
     texts,
     nightTexts: nightTexts.length ? nightTexts : undefined,
     ...(dailyGoal ? { dailyGoal } : {}),
-    ...(priority ? { priority } : {})
+    ...(priority ? { priority } : {}),
+    ...(soundPreset ? { soundPreset } : {})
   }
 }
 
@@ -251,6 +257,9 @@ export function getConfig(): Config {
           : 'full',
         zoneStart: clampZone(stored.zoneStart, 0),
         zoneEnd: clampZone(stored.zoneEnd, 30),
+        soundPreset: SOUND_PRESET_VALUES.includes(stored.soundPreset as SoundPreset)
+          ? (stored.soundPreset as SoundPreset)
+          : 'classic',
         themeMode: stored.themeMode === 'light' || stored.themeMode === 'dark' ? stored.themeMode : 'system',
         settingsWindow: normalizeBounds(stored.settingsWindow),
         activeProfile: typeof stored.activeProfile === 'string' ? stored.activeProfile : null
@@ -282,6 +291,9 @@ export function updateConfig(patch: Partial<Config>): Config {
   next.volume = Math.min(1, Math.max(0, next.volume))
   next.audioMode = next.audioMode === 'file' ? 'file' : 'synth'
   next.audioFileName = /^[\w.-]+$/.test(next.audioFileName ?? '') ? next.audioFileName : ''
+  next.soundPreset = SOUND_PRESET_VALUES.includes(next.soundPreset as SoundPreset)
+    ? (next.soundPreset as SoundPreset)
+    : 'classic'
   next.danmaku = normalizeDanmaku(patch.danmaku !== undefined ? patch.danmaku : getConfig().danmaku)
   next.festivalEnabled = next.festivalEnabled !== false
   next.highPriorityNotify = next.highPriorityNotify === true

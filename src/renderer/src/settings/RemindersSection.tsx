@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ReminderItem } from '@shared/types'
+import type { ReminderItem, SoundPreset } from '@shared/types'
 import { REMINDER_PRESETS } from '@shared/templates'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { newId } from './util'
 
 const INTERVAL_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240]
+
+const SOUND_PRESETS: Array<{ value: SoundPreset; label: string }> = [
+  { value: 'classic', label: '经典双音' },
+  { value: 'windchime', label: '风铃' },
+  { value: 'water', label: '水滴' },
+  { value: 'knock', label: '木鱼' },
+  { value: 'musicbox', label: '八音盒' }
+]
 
 interface Props {
   reminders: ReminderItem[]
@@ -165,6 +173,22 @@ function ReminderCard({
           />
           次
         </label>
+        <Select
+          value={item.soundPreset ?? 'global'}
+          onValueChange={(v) => onChange({ soundPreset: v === 'global' ? undefined : (v as SoundPreset) })}
+        >
+          <SelectTrigger className="text-xs" title="提示音音色">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="global">跟随全局</SelectItem>
+            {SOUND_PRESETS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button variant="link" size="sm" className="h-auto text-muted-foreground hover:text-foreground" onClick={() => setNightOpen(!nightOpen)}>
           {nightOpen ? '收起夜间文案' : item.nightTexts?.length ? '夜间文案 ●' : '夜间文案'}
         </Button>

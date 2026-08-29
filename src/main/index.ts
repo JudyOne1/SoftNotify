@@ -66,7 +66,8 @@ function remind(entry: ItemEntry | null, manual = false): void {
       }
     }
     const high = entry?.item.priority === 'high'
-    sendReminder(text, cfg.soundEnabled, cfg.volume, audioUrl(), entry?.item.id, high ? 'high' : undefined)
+    const preset = entry?.item.soundPreset ?? cfg.soundPreset
+    sendReminder(text, cfg.soundEnabled, cfg.volume, audioUrl(), entry?.item.id, high ? 'high' : undefined, preset)
     addHistory({ text, name: entry?.item.name, at: Date.now() })
     if (high && cfg.highPriorityNotify && Notification.isSupported()) {
       new Notification({

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Config, UpdateStatus } from '@shared/types'
+import type { Config, SoundPreset, UpdateStatus } from '@shared/types'
 import RemindersSection from './RemindersSection'
 import SchedulesSection from './SchedulesSection'
 import ProfilesSection from './ProfilesSection'
@@ -8,6 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { playPreset } from '../audio/chime'
+
+const SOUND_PRESETS: Array<{ value: SoundPreset; label: string }> = [
+  { value: 'classic', label: '经典双音' },
+  { value: 'windchime', label: '风铃' },
+  { value: 'water', label: '水滴' },
+  { value: 'knock', label: '木鱼' },
+  { value: 'musicbox', label: '八音盒' }
+]
 
 const REPO_URL = 'https://github.com/JudyOne1/SoftNotify'
 
@@ -210,6 +219,37 @@ export default function SettingsApp(): React.JSX.Element {
                   </SelectContent>
                 </Select>
               </Row>
+              <Row label="提示音色">
+                <span className="flex items-center gap-2">
+                  <Select
+                    value={config.soundPreset}
+                    disabled={config.audioMode === 'file'}
+                    onValueChange={(v) => void patch({ soundPreset: v as Config['soundPreset'] })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SOUND_PRESETS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={config.audioMode === 'file'}
+                    onClick={() => playPreset(config.soundPreset, config.volume)}
+                  >
+                    试听
+                  </Button>
+                </span>
+              </Row>
+              {config.audioMode === 'file' && (
+                <div className="pb-2 text-xs text-muted-foreground">当前使用自定义音频文件，音色选择不生效</div>
+              )}
               {config.audioMode === 'file' && (
                 <div className="flex items-center gap-3 py-3 text-sm">
                   <span className="min-w-0 flex-1 truncate text-muted-foreground" title={config.audioFileName}>

@@ -1,3 +1,6 @@
+/** 合成提示音音色（chime.ts 引擎渲染） */
+export type SoundPreset = 'classic' | 'windchime' | 'water' | 'knock' | 'musicbox'
+
 export interface ReminderItem {
   /** 稳定标识，调度与差量更新依赖它 */
   id: string
@@ -14,6 +17,8 @@ export interface ReminderItem {
   dailyGoal?: number
   /** 重要提醒：弹幕更大更慢，可联动系统通知 */
   priority?: 'high'
+  /** 提示音音色；为空跟随全局 */
+  soundPreset?: SoundPreset
 }
 
 /** 定时日程：按钟点触发（每天/每周几/一次性），与间隔提醒分开管理 */
@@ -34,6 +39,8 @@ export interface ScheduleItem {
   dailyGoal?: number
   /** 重要提醒：弹幕更大更慢，可联动系统通知 */
   priority?: 'high'
+  /** 提示音音色；为空跟随全局 */
+  soundPreset?: SoundPreset
   /** 忽略安静时段（如 23:00 睡前提醒落在安静时段内） */
   ignoreQuiet: boolean
 }
@@ -121,6 +128,8 @@ export interface Config {
   audioMode: 'synth' | 'file'
   /** 自定义音频文件名（存于 userData/audio/ 下），空表示未选择 */
   audioFileName: string
+  /** 全局合成音色（audioMode 为 synth 时生效） */
+  soundPreset: SoundPreset
 }
 
 export interface ReminderPayload {
@@ -133,8 +142,9 @@ export interface ReminderPayload {
   itemId?: string
   /** 重要提醒：更大更慢展示 */
   priority?: 'high'
+  /** 提示音音色（提醒项单独配置，空则全局） */
+  soundPreset?: SoundPreset
 }
-
 /** 选择自定义音频的结果 */
 export interface AudioChoiceResult {
   canceled: boolean

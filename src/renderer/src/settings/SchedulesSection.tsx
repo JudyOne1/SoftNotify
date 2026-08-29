@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ScheduleItem } from '@shared/types'
+import type { ScheduleItem, SoundPreset } from '@shared/types'
 import { SCHEDULE_PRESETS } from '@shared/templates'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,14 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { newId, timeIso, todayIso } from './util'
+
+const SOUND_PRESETS: Array<{ value: SoundPreset; label: string }> = [
+  { value: 'classic', label: '经典双音' },
+  { value: 'windchime', label: '风铃' },
+  { value: 'water', label: '水滴' },
+  { value: 'knock', label: '木鱼' },
+  { value: 'musicbox', label: '八音盒' }
+]
 
 const WEEKDAYS = [
   { value: 1, label: '一' },
@@ -239,6 +247,22 @@ function ScheduleCard({
           />
           次
         </label>
+        <Select
+          value={item.soundPreset ?? 'global'}
+          onValueChange={(v) => onChange({ soundPreset: v === 'global' ? undefined : (v as SoundPreset) })}
+        >
+          <SelectTrigger className="h-7 text-xs" title="提示音音色">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="global">跟随全局</SelectItem>
+            {SOUND_PRESETS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button variant="link" size="sm" className="h-auto text-muted-foreground hover:text-foreground" onClick={() => setNightOpen(!nightOpen)}>
           {nightOpen ? '收起夜间文案' : item.nightTexts?.length ? '夜间文案 ●' : '夜间文案'}
         </Button>
