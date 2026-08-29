@@ -87,3 +87,35 @@ _2026-08-29 起草。目的：给 Notify 的界面升级做方向决策。写给
 - [Electron BrowserWindow API](https://electronjs.org/docs/latest/api/browser-window)
 - [Electron issue #29937（Mica 支持）](https://github.com/electron/electron/issues/29937)
 - [Electron issue #38532（Mica 透明度注意事项）](https://github.com/electron/electron/issues/38532)
+
+---
+
+## 附：新拟物风格（Neumorphism）专项调研（2026-08-29 追加）
+
+_所有者发来 [大作设计网站的 Neumorphism 介绍](https://blog.bigbigwork.com/archives/2023100701w) 征询适配性，此处为补充调研与结论。_
+
+### 是什么
+
+新拟物（Neumorphism / Soft UI）：控件与背景**同色**，靠**双光影**（左上亮影 + 右下暗影）做出「从背景里凸起/凹进」的柔软塑料质感。2020 年初爆红，文章里的设计要点：三色同源调色板（同色相的亮/中/暗）、背景避免纯黑白、几何形状简单、全局一致光源。它自身也承认两大短板：**可访问性差**（元素与背景同色、对比度低）与**实现复杂**（多层阴影），并给了正确姿势——Spotify 案例只对按钮/logo 局部拟物，整体结构保持扁平。
+
+### 外部调研结论（正反两面）
+
+- **纯新拟物 2020 年快速退潮**，公认主因：对比度达不到 WCAG 可访问性标准、按钮「能不能点」语义模糊、图标去标签后可用性崩坏（[LogRocket](https://blog.logrocket.com/ux-design/neumorphism-ui-design/)、[SVGator](https://www.svgator.com/blog/neumorphism-origin-influence-design/)、[Axess Lab](https://axesslab.com/neumorphism/)）
+- **暗色模式是天然短板**：光影逻辑依赖亮背景，暗底下崩坏（[UX Planet: The Rise and Fall of Neumorphism](https://uxplanet.org/the-rise-and-fall-of-neumorphism-613795fc6f8d)）；「暗色拟物」需要特殊配方（亮影用半透明白、暗影用纯黑）且要额外补对比度
+- **2025 年有受限回潮**（"Neumorphism 2.0"）：暗色拟物 + 保持标签/对比度/焦点态，作为**点缀风格**与其他风格混搭（[AppSunify](https://www.linkedin.com/pulse/dark-mode-neumorphism-beyond-2025-mobile-ui-design-trends-appsunify-3aecc)、[Medium Design Bootcamp](https://medium.com/design-bootcamp/from-skeuomorphism-to-neumorphism-visual-trends-in-2025-1aef3a6bf923)、[可访问的拟物实践指南](https://www.setproduct.com/blog/neumorphism-design-guide)）
+
+### 与 Notify 的适配性
+
+**合拍的**：拟物的「柔软、有触感」与产品「轻提醒、不打扰」气质相配；**物理感控件**（滑块、开关、测试按钮）正是拟物最擅长的元素。
+
+**冲突的**：设置页是**文本密集型表单**（多行文案编辑、列表卡片、周几 chips）——拟物最不擅长的就是密集文字与 inset 输入框（可读性差）；且我们刚确立「深色精致工具风」，纯拟物会与之冲突并带回 2020 复古感 + 暗色光影难题。
+
+### 三个可选方案
+
+| 方案 | 内容 | 成本 | 风险 |
+|---|---|---|---|
+| **1. 局部拟物混合（推荐）** | 骨架不动（导航/卡片/列表/文字保持现状），只把「物理感控件」拟物化：滑块（凹槽轨道+凸起手柄）、开关/checkbox、测试/添加按钮、试听按钮；暗色拟物配方（亮影半透明白 + 暗影纯黑），文字对比度全部守住 | 低 | 几乎无——不碰文本区 |
+| 2. 全量新拟物 | 所有卡片/输入框/导航都拟物 | 中高 | 文字密集页可读性下降、与现有侧栏结构冲突、复古感 |
+| 3. 仅点缀 | 只在引导页/更新 toast 用拟物按钮 | 最低 | 无，但感知也弱 |
+
+技术实现纯 CSS（box-shadow 双影 + inset），零依赖，暗色亮色各一套变量即可。
