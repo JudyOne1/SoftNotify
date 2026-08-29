@@ -101,6 +101,8 @@ export interface Config {
   festivalEnabled: boolean
   /** 重要提醒同时发 Windows 系统通知 */
   highPriorityNotify: boolean
+  /** 弹幕悬停交互：鼠标移入弹幕暂停并浮出打卡按钮 */
+  hoverInteraction: boolean
   /** 界面主题：跟随系统 / 亮色 / 暗色 */
   themeMode: 'system' | 'light' | 'dark'
   /** 设置窗口尺寸记忆 */

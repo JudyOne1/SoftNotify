@@ -327,6 +327,13 @@ export default function SettingsApp(): React.JSX.Element {
               <Row label="文字描边">
                 <Switch checked={d.stroke} onCheckedChange={(v) => void patch({ danmaku: { ...d, stroke: v } })} />
               </Row>
+              <Row label="悬停打卡">
+                <Switch
+                  title="鼠标移入弹幕时暂停飘动并浮出打卡按钮"
+                  checked={config.hoverInteraction}
+                  onCheckedChange={(v) => void patch({ hoverInteraction: v })}
+                />
+              </Row>
               <Row label="节日祝福">
                 <Switch
                   checked={config.festivalEnabled}

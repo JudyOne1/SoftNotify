@@ -25,6 +25,7 @@ export const DEFAULT_CONFIG: Config = {
   danmaku: { opacity: 1, fontScale: 1, stroke: true },
   festivalEnabled: true,
   highPriorityNotify: false,
+  hoverInteraction: true,
   themeMode: 'system',
   audioMode: 'synth',
   audioFileName: ''
@@ -225,6 +226,7 @@ export function getConfig(): Config {
         danmaku: normalizeDanmaku(stored.danmaku),
         festivalEnabled: stored.festivalEnabled !== false,
         highPriorityNotify: stored.highPriorityNotify === true,
+        hoverInteraction: stored.hoverInteraction !== false,
         themeMode: stored.themeMode === 'light' || stored.themeMode === 'dark' ? stored.themeMode : 'system',
         settingsWindow: normalizeBounds(stored.settingsWindow),
         activeProfile: typeof stored.activeProfile === 'string' ? stored.activeProfile : null
@@ -259,6 +261,7 @@ export function updateConfig(patch: Partial<Config>): Config {
   next.danmaku = normalizeDanmaku(patch.danmaku !== undefined ? patch.danmaku : getConfig().danmaku)
   next.festivalEnabled = next.festivalEnabled !== false
   next.highPriorityNotify = next.highPriorityNotify === true
+  next.hoverInteraction = next.hoverInteraction !== false
   next.themeMode = next.themeMode === 'light' || next.themeMode === 'dark' ? next.themeMode : 'system'
   if (patch.settingsWindow !== undefined) {
     next.settingsWindow = normalizeBounds(patch.settingsWindow)

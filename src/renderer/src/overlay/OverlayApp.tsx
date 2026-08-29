@@ -63,6 +63,7 @@ export default function OverlayApp(): React.JSX.Element {
   const [items, setItems] = useState<DanmakuItem[]>([])
   const configRef = useRef<Config | null>(null)
   const [style, setStyle] = useState({ opacity: 1, fontScale: 1, stroke: true })
+  const [hoverEnabled, setHoverEnabled] = useState(true)
   /** 各弹幕交互区元素引用，用于向主进程上报可点击区域 */
   const wrapperRefs = useRef(new Map<number, HTMLElement>())
   /** 各车道当前占用数 */
@@ -72,10 +73,12 @@ export default function OverlayApp(): React.JSX.Element {
     void window.notifyAPI.getConfig().then((c) => {
       configRef.current = c
       if (c.danmaku) setStyle(c.danmaku)
+      setHoverEnabled(c.hoverInteraction !== false)
     })
     window.notifyAPI.onConfigChanged((c) => {
       configRef.current = c
       if (c.danmaku) setStyle(c.danmaku)
+      setHoverEnabled(c.hoverInteraction !== false)
     })
     window.notifyAPI.onReminder((payload) => {
       // 选最空的车道；全满则随机
@@ -87,15 +90,37 @@ export default function OverlayApp(): React.JSX.Element {
     })
   }, [])
 
-  /** 弹幕集合变化时，把交互区矩形上报给主进程（主进程轮询光标做悬停穿透切换） */
+  /**
+   * 持续上报交互区实时位置：弹幕靠 CSS 动画移动，静态矩形会立刻失效。
+   * 每 120ms 读取一次实际位置，有变化才发 IPC。
+   */
   useEffect(() => {
-    const rects = Array.from(wrapperRefs.current.values()).map((el) => {
-      const r = el.getBoundingClientRect()
-      // 高度额外包含下方浮出的打卡按钮
-      return { x: r.left, y: r.top, w: r.width, h: r.height + 52 }
-    })
-    window.notifyAPI.setOverlayUiRects(rects)
-  }, [items, style])
+    if (!hoverEnabled) {
+      window.notifyAPI.setOverlayUiRects([])
+      return
+    }
+    let last = ''
+    const timer = setInterval(() => {
+      if (wrapperRefs.current.size === 0) {
+        if (last !== '[]') {
+          last = '[]'
+          window.notifyAPI.setOverlayUiRects([])
+        }
+        return
+      }
+      const rects = Array.from(wrapperRefs.current.values()).map((el) => {
+        const r = el.getBoundingClientRect()
+        // 打卡胶囊覆盖在文字上，范围略放宽便于命中
+        return { x: Math.round(r.left) - 6, y: Math.round(r.top) - 6, w: Math.round(r.width) + 12, h: Math.round(r.height + 12) }
+      })
+      const key = JSON.stringify(rects)
+      if (key !== last) {
+        last = key
+        window.notifyAPI.setOverlayUiRects(rects)
+      }
+    }, 120)
+    return () => clearInterval(timer)
+  }, [hoverEnabled])
 
   const remove = (id: number): void => {
     setItems((prev) => {
@@ -134,7 +159,7 @@ export default function OverlayApp(): React.JSX.Element {
           >
             {item.text}
           </span>
-          {item.itemId && (
+          {item.itemId && hoverEnabled && (
             <span className="dm-actions">
               <button type="button" className="dm-btn dm-done" onClick={() => done(item)}>
                 ✓ 完成了
