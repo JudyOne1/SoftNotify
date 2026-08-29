@@ -7,31 +7,45 @@
 :root {
   --background: #0f1115;
   --foreground: #e6e9f0;
-  --card: #141821;
+  --card: #1a1f2b;
   --card-foreground: #e6e9f0;
   --popover: #171b24;
   --popover-foreground: #e6e9f0;
   --primary: #38bdf8;
   --primary-foreground: #08131c;
-  --secondary: #1b202c;
+  --secondary: #202634;
   --secondary-foreground: #e6e9f0;
-  --muted: #10131a;
-  --muted-foreground: #9aa3b5;
-  --accent: #1b2432;
+  --muted: #12151c;
+  --muted-foreground: #a3adc0;
+  --accent: #1e2736;
   --accent-foreground: #e6e9f0;
   --destructive: #f87171;
-  --border: #262c3a;
-  --input: #10131a;
+  --border: #2b3242;
+  --input: #12151c;
   --ring: #38bdf8;
   --radius: 0.75rem;
 
-  /* 拟物双光影：亮影左上、暗影右下 */
-  --neu-light: rgba(255, 255, 255, 0.055);
-  --neu-dark: rgba(0, 0, 0, 0.6);
-  --neu-raised: 5px 5px 12px var(--neu-dark), -4px -4px 10px var(--neu-light);
-  --neu-raised-sm: 3px 3px 7px var(--neu-dark), -3px -3px 6px var(--neu-light);
-  --neu-inset: inset 4px 4px 8px var(--neu-dark), inset -3px -3px 7px var(--neu-light);
-  --neu-inset-sm: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 4px var(--neu-light);
+  /* 拟物双光影：亮影左上、暗影右下（加强版） */
+  --neu-light: rgba(255, 255, 255, 0.09);
+  --neu-dark: rgba(0, 0, 0, 0.8);
+  --neu-raised: 7px 7px 16px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --neu-raised-sm: 4px 4px 10px var(--neu-dark), -4px -4px 8px var(--neu-light);
+  --neu-inset: inset 5px 5px 11px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+  --neu-inset-sm: inset 3px 3px 6px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+
+  /* 滑块手柄：比卡片亮一档，保证暗色下可见 */
+  --thumb: #323d51;
+  --thumb-ring: rgba(255, 255, 255, 0.16);
+
+  /* 开关：关闭红色 / 开启绿色 */
+  --sw-track-off: rgba(248, 113, 113, 0.16);
+  --sw-track-on: rgba(52, 211, 153, 0.18);
+  --sw-knob-off: #f87171;
+  --sw-knob-on: #34d399;
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
 }
 
 :root[data-theme='light'] {
@@ -54,8 +68,23 @@
   --input: #e9ecf1;
   --ring: #0284c7;
 
-  --neu-light: rgba(255, 255, 255, 0.9);
-  --neu-dark: rgba(163, 177, 198, 0.55);
+  --neu-light: rgba(255, 255, 255, 0.95);
+  --neu-dark: rgba(163, 177, 198, 0.65);
+  --neu-raised: 7px 7px 16px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(255, 255, 255, 0.5);
+  --neu-raised-sm: 4px 4px 10px var(--neu-dark), -4px -4px 8px var(--neu-light);
+  --neu-inset: inset 5px 5px 11px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+  --neu-inset-sm: inset 3px 3px 6px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+
+  --thumb: #f7f9fc;
+  --thumb-ring: rgba(163, 177, 198, 0.8);
+
+  --sw-track-off: rgba(220, 38, 38, 0.14);
+  --sw-track-on: rgba(5, 150, 105, 0.16);
+  --sw-knob-off: #dc2626;
+  --sw-knob-on: #059669;
+
+  --scrollbar-thumb: rgba(15, 23, 42, 0.22);
+  --scrollbar-thumb-hover: rgba(15, 23, 42, 0.36);
 }
 
 @media (prefers-color-scheme: light) {
@@ -79,9 +108,52 @@
     --input: #e9ecf1;
     --ring: #0284c7;
 
-    --neu-light: rgba(255, 255, 255, 0.9);
-    --neu-dark: rgba(163, 177, 198, 0.55);
+    --neu-light: rgba(255, 255, 255, 0.95);
+    --neu-dark: rgba(163, 177, 198, 0.65);
+    --neu-raised: 7px 7px 16px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(255, 255, 255, 0.5);
+    --neu-raised-sm: 4px 4px 10px var(--neu-dark), -4px -4px 8px var(--neu-light);
+    --neu-inset: inset 5px 5px 11px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+    --neu-inset-sm: inset 3px 3px 6px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+
+    --thumb: #f7f9fc;
+    --thumb-ring: rgba(163, 177, 198, 0.8);
+
+    --sw-track-off: rgba(220, 38, 38, 0.14);
+    --sw-track-on: rgba(5, 150, 105, 0.16);
+    --sw-knob-off: #dc2626;
+    --sw-knob-on: #059669;
+
+    --scrollbar-thumb: rgba(15, 23, 42, 0.22);
+    --scrollbar-thumb-hover: rgba(15, 23, 42, 0.36);
   }
+}
+
+/* ============ 滚动条（全窗口统一，替代系统默认的突兀白条） ============ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* 令牌 → Tailwind 工具类映射 */

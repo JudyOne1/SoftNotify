@@ -12,7 +12,7 @@ function Slider({ className, ...props }: React.ComponentProps<typeof SliderPrimi
       <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-transparent shadow-[var(--neu-inset-sm)]">
         <SliderPrimitive.Range className="absolute h-full bg-primary" />
       </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb className="block size-4 rounded-full bg-card shadow-[var(--neu-raised-sm)] ring-[var(--ring)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 active:scale-95 disabled:pointer-events-none" />
+      <SliderPrimitive.Thumb className="block size-5 cursor-grab rounded-full border border-[var(--thumb-ring)] bg-[var(--thumb)] shadow-[var(--neu-raised-sm)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] active:cursor-grabbing active:scale-95 disabled:pointer-events-none" />
     </SliderPrimitive.Root>
   )
 }
