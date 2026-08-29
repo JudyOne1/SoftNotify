@@ -35,16 +35,17 @@ describe('computeScheduleAt', () => {
     expect(new Date(t).getDate()).toBe(NOW.getDate())
   })
 
-  it('指定周几 → 跳到下一个匹配日（周日=0）', () => {
-    // NOW 是周六（6），下一个周日（0）是明天
-    const t = computeScheduleAt({ time: '10:00', weekdays: [0] }, NOW)
-    expect(new Date(t).getDay()).toBe(0)
-    expect(new Date(t).getDate()).toBe(NOW.getDate() + 1)
+  it('指定周几 → 跳到下一个匹配日（一周内）', () => {
+    // 目标周几取「明天的周几」，与今天必然不同，可确定性断言（不依赖测试运行日期）
+    const target = (NOW.getDay() + 1) % 7
+    const t = computeScheduleAt({ time: '10:00', weekdays: [target] }, NOW)
+    expect(new Date(t).getDay()).toBe(target)
+    expect(t).toBeGreaterThan(NOW.getTime())
+    expect(t - NOW.getTime()).toBeLessThanOrEqual(7 * 86_400_000)
   })
 
   it('今天在 weekdays 内但时刻已过 → 下周同一天', () => {
-    // 周六（6）09:00 已过 → 下周六 = +7 天
-    const t = computeScheduleAt({ time: '09:00', weekdays: [6] }, NOW)
+    const t = computeScheduleAt({ time: '09:00', weekdays: [NOW.getDay()] }, NOW)
     const expectDate = new Date(NOW)
     expectDate.setDate(expectDate.getDate() + 7)
     expectDate.setHours(9, 0, 0, 0)
@@ -52,7 +53,8 @@ describe('computeScheduleAt', () => {
   })
 
   it('今天时刻未过且周几匹配 → 今天触发', () => {
-    const t = computeScheduleAt({ time: '15:00', weekdays: [6] }, NOW)
+    const t = computeScheduleAt({ time: '15:00', weekdays: [NOW.getDay()] }, NOW)
+    expect(new Date(t).getDay()).toBe(NOW.getDay())
     expect(new Date(t).getDate()).toBe(NOW.getDate())
   })
 

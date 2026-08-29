@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ActivityCalendar } from 'react-activity-calendar'
 import type { Config, StatsSummary } from '@shared/types'
+import { computeStreak } from '@shared/streak-core'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -87,10 +88,14 @@ export default function StatsSection({ theme }: { theme: 'light' | 'dark' }): Re
         {goalItems.map((r) => {
           const done = stats?.todayByItem[r.id] ?? 0
           const pct = Math.min(100, Math.round((done / (r.dailyGoal ?? 1)) * 100))
+          const streak = computeStreak(stats?.itemDaily[r.id] ?? {}, r.dailyGoal ?? 1)
           return (
             <div key={r.id} className="rounded-lg bg-card p-3 shadow-[var(--neu-raised-sm)]">
               <div className="mb-1.5 flex justify-between text-[13px]">
-                <span>{r.name}</span>
+                <span>
+                  {r.name}
+                  {streak > 0 && <span className="ml-1.5 text-primary">🔥{streak}</span>}
+                </span>
                 <span className="tabular-nums text-muted-foreground">
                   {done}/{r.dailyGoal}
                 </span>

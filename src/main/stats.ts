@@ -13,6 +13,10 @@ interface StatsFile {
   checkins: Checkin[]
   /** 每日活跃分钟数（getSystemIdleTime 轮询累计） */
   activeMinutes: Record<string, number>
+  /** 已庆祝的里程碑（如 water-7），防重复 */
+  celebrated: string[]
+  /** 番茄钟完成次数（按日） */
+  focusSessions: Record<string, number>
 }
 
 const MAX_CHECKINS = 5000
@@ -29,10 +33,12 @@ function load(): StatsFile {
       const raw = JSON.parse(readFileSync(file(), 'utf-8')) as Partial<StatsFile>
       cache = {
         checkins: Array.isArray(raw.checkins) ? raw.checkins.slice(-MAX_CHECKINS) : [],
-        activeMinutes: raw.activeMinutes && typeof raw.activeMinutes === 'object' ? raw.activeMinutes : {}
+        activeMinutes: raw.activeMinutes && typeof raw.activeMinutes === 'object' ? raw.activeMinutes : {},
+        celebrated: Array.isArray(raw.celebrated) ? raw.celebrated : [],
+        focusSessions: raw.focusSessions && typeof raw.focusSessions === 'object' ? raw.focusSessions : {}
       }
     } catch {
-      cache = { checkins: [], activeMinutes: {} }
+      cache = { checkins: [], activeMinutes: {}, celebrated: [], focusSessions: {} }
     }
   }
   return cache
@@ -68,12 +74,15 @@ export function todayCountFor(itemId: string): number {
   return load().checkins.filter((c) => c.date === today && c.itemId === itemId).length
 }
 
-/** 统计页数据：近 N 天的打卡/活跃时长聚合 */
+/** 统计页数据：近 N 天的打卡/活跃时长聚合 + 今日分项 */
 export function getStats(days = 365): {
   checkinsPerDay: Array<{ date: string; count: number }>
   activeMinutes: Record<string, number>
   todayByItem: Record<string, number>
   todayTotal: number
+  /** 每个提醒项的每日打卡次数（统计页算 streak 用） */
+  itemDaily: Record<string, Record<string, number>>
+  todayFocus: number
 } {
   const data = load()
   const counts = new Map<string, number>()
@@ -97,7 +106,49 @@ export function getStats(days = 365): {
     todayTotal++
   }
 
-  return { checkinsPerDay, activeMinutes: { ...data.activeMinutes }, todayByItem, todayTotal }
+  const itemDaily: Record<string, Record<string, number>> = {}
+  for (const c of data.checkins) {
+    const per = (itemDaily[c.itemId] ??= {})
+    per[c.date] = (per[c.date] ?? 0) + 1
+  }
+
+  return {
+    checkinsPerDay,
+    activeMinutes: { ...data.activeMinutes },
+    todayByItem,
+    todayTotal,
+    itemDaily,
+    todayFocus: data.focusSessions[t] ?? 0
+  }
+}
+
+/** 某提醒项的每日打卡次数（里程碑/streak 计算用） */
+export function itemDailyCounts(itemId: string): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const c of load().checkins) {
+    if (c.itemId !== itemId) continue
+    out[c.date] = (out[c.date] ?? 0) + 1
+  }
+  return out
+}
+
+/** 已庆祝里程碑 */
+export function isCelebrated(key: string): boolean {
+  return load().celebrated.includes(key)
+}
+
+export function markCelebrated(key: string): void {
+  const data = load()
+  if (!data.celebrated.includes(key)) data.celebrated.push(key)
+  save()
+}
+
+/** 番茄钟完成计数 */
+export function addFocusSession(): void {
+  const data = load()
+  const key = todayStr()
+  data.focusSessions[key] = (data.focusSessions[key] ?? 0) + 1
+  save()
 }
 
 /** 活跃时长采集：每分钟检查一次，1 分钟内有过输入则计 1 分钟 */

@@ -15,7 +15,8 @@ import { isManualMeeting, isMeeting, setManualMeeting, startMeetingPolling } fro
 import { isFullscreenApp, startFullscreenPolling } from './fullscreen'
 import { festivalGreeting } from './festivals'
 import { addHistory, getHistory } from './history'
-import { addCheckin, getStats, startUsageTracking, todayCountFor } from './stats'
+import { addCheckin, getStats, isCelebrated, itemDailyCounts, markCelebrated, startUsageTracking, todayCountFor } from './stats'
+import { computeStreak, STREAK_MILESTONES } from '@shared/streak-core'
 import { registerSnoozeFire, resetSnooze, snoozeItem } from './snooze'
 import { writeFile } from 'node:fs/promises'
 
@@ -297,8 +298,22 @@ if (!app.requestSingleInstanceLock()) {
       if (win && Array.isArray(rects)) setOverlayUiRects(win, rects)
     })
     ipcMain.handle('checkin', (_event, itemId: string) => {
-      addCheckin(String(itemId))
-      resetSnooze(String(itemId))
+      const id = String(itemId)
+      addCheckin(id)
+      resetSnooze(id)
+      // Streak 里程碑庆祝（3/7/14/30/50/100 天连续达标）
+      const entry = findItem(id)
+      const goal = entry?.item.dailyGoal ?? 0
+      if (goal > 0) {
+        const streak = computeStreak(itemDailyCounts(id), goal)
+        const milestone = [...STREAK_MILESTONES].reverse().find((n) => streak >= n && !isCelebrated(`${id}-${n}`))
+        if (milestone) {
+          const cfg = getConfig()
+          markCelebrated(`${id}-${milestone}`)
+          sendReminder(`🔥 连续 ${milestone} 天达成「${entry?.item.name}」目标！`, cfg.soundEnabled, cfg.volume)
+          addHistory({ text: `🔥 连续 ${milestone} 天达成「${entry?.item.name}」`, name: entry?.item.name, at: Date.now() })
+        }
+      }
       refreshTray(handlers, scheduler)
     })
     ipcMain.handle('snooze', (_event, itemId: string) => {

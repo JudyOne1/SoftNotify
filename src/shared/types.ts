@@ -176,4 +176,8 @@ export interface StatsSummary {
   /** 今日各提醒项打卡次数 */
   todayByItem: Record<string, number>
   todayTotal: number
+  /** 每个提醒项的每日打卡次数（统计页算 streak 用） */
+  itemDaily: Record<string, Record<string, number>>
+  /** 今日完成的番茄钟数 */
+  todayFocus: number
 }
