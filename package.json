@@ -1,6 +1,6 @@
 {
   "name": "notify",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Cross-platform gentle reminder app with danmaku-style floating notifications",
   "main": "./out/main/index.js",
   "author": "Notify contributors",
