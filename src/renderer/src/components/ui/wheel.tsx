@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 interface WheelProps {
-  /** 当前值 */
+  /** 当前值（受控：显示位置完全由它决定） */
   value: number
   min: number
   max: number
@@ -16,44 +16,36 @@ interface WheelProps {
 const ITEM_H = 28
 
 /**
- * 滚轮选择器：iOS 风格滚动列，滚动吸附 + 中心高亮（拟物凹槽带）。
- * 高度固定 4 行（7rem），上下补位让首尾项也能滚到中心。
+ * 滚轮选择器：中心高亮 + 滚动吸附。
+ * 同步规则（保证数字一一对应）：
+ * - 显示位置完全由受控 value 驱动（effect 把 scrollTop 校准到 index×行高）；
+ * - 用户滚动只负责「提交」：静止 120ms 后读最终位置回传 onChange；
+ * - 程序化滚动产生的事件回读值恒等于 value，天然不会造成回环。
  */
 export function Wheel({ value, min, max, step = 1, onChange, label, className }: WheelProps): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
-  /** 由内部滚动触发的 onChange 刚发出的值，防止外部同步又把滚动条拉回去 */
-  const pending = useRef<number | null>(null)
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const settle = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const count = Math.floor((max - min) / step) + 1
-  const index = Math.round((value - min) / step)
+  const index = Math.min(count - 1, Math.max(0, Math.round((value - min) / step)))
 
-  /** 滚动到指定 index（立即或平滑） */
-  function scrollToIndex(idx: number, smooth = false): void {
-    listRef.current?.scrollTo({ top: idx * ITEM_H, behavior: smooth ? 'smooth' : 'auto' })
-  }
-
+  /** 校准滚动位置到受控值 */
   useEffect(() => {
-    if (pending.current === value) {
-      pending.current = null
-      return
-    }
-    scrollToIndex(index)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, min, max, step])
+    const el = listRef.current
+    if (!el) return
+    const target = index * ITEM_H
+    if (Math.abs(el.scrollTop - target) > 2) el.scrollTop = target
+  }, [index, min, max, step])
 
-  function settle(): void {
-    if (settleTimer.current) clearTimeout(settleTimer.current)
-    settleTimer.current = setTimeout(() => {
-      const el = listRef.current
-      if (!el) return
-      const idx = Math.min(count - 1, Math.max(0, Math.round(el.scrollTop / ITEM_H)))
-      const v = min + idx * step
-      if (v !== value) {
-        pending.current = v
-        onChange(v)
-      }
-    }, 120)
+  function onScroll(): void {
+    const el = listRef.current
+    if (!el) return
+    const idx = Math.min(count - 1, Math.max(0, Math.round(el.scrollTop / ITEM_H)))
+    const v = min + idx * step
+    if (v !== value) {
+      if (settle.current) clearTimeout(settle.current)
+      settle.current = setTimeout(() => onChange(v), 120)
+    }
   }
 
   return (
@@ -67,26 +59,21 @@ export function Wheel({ value, min, max, step = 1, onChange, label, className }:
           aria-label={label}
           className="h-full overflow-y-auto py-[42px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           style={{ scrollSnapType: 'y mandatory' }}
-          onScroll={settle}
+          onScroll={onScroll}
         >
           {Array.from({ length: count }, (_, i) => {
             const v = min + i * step
-            const selected = v === value
             return (
               <div
                 key={v}
                 role="option"
-                aria-selected={selected}
+                aria-selected={v === value}
                 className={cn(
                   'flex h-7 cursor-default items-center justify-center text-[13px] tabular-nums transition-colors',
-                  selected ? 'font-semibold text-primary' : 'text-muted-foreground'
+                  v === value ? 'font-semibold text-primary' : 'text-muted-foreground'
                 )}
                 style={{ scrollSnapAlign: 'start' }}
-                onClick={() => {
-                  pending.current = v
-                  onChange(v)
-                  scrollToIndex(i, true)
-                }}
+                onClick={() => onChange(v)}
               >
                 {v}
               </div>

@@ -18,6 +18,22 @@ const SOUND_PRESETS: Array<{ value: SoundPreset; label: string }> = [
   { value: 'musicbox', label: '八音盒' }
 ]
 
+/** 快捷间隔预设（秒） */
+const INTERVAL_PRESETS: Array<{ value: number; label: string }> = [
+  { value: 300, label: '5 分钟' },
+  { value: 900, label: '15 分钟' },
+  { value: 1800, label: '30 分钟' },
+  { value: 2700, label: '45 分钟' },
+  { value: 3600, label: '1 小时' },
+  { value: 5400, label: '1.5 小时' },
+  { value: 7200, label: '2 小时' },
+  { value: 10800, label: '3 小时' },
+  { value: 14400, label: '4 小时' },
+  { value: 21600, label: '6 小时' },
+  { value: 43200, label: '12 小时' },
+  { value: 86400, label: '24 小时' }
+]
+
 interface Props {
   reminders: ReminderItem[]
   onChange: (next: ReminderItem[]) => void
@@ -150,6 +166,10 @@ function ReminderCard({
     }
   }, [item.id, item.intervalSeconds, item.anchorAt, item.enabled])
 
+  /** 当前间隔是否命中预设；都没有则显示「自定义」 */
+  const presetMatch = INTERVAL_PRESETS.find((p) => p.value === item.intervalSeconds)
+  const selectValue = presetMatch ? String(presetMatch.value) : 'custom'
+
   return (
     <div className={`rounded-lg bg-card p-3.5 shadow-[var(--neu-raised)] transition-[filter] hover:brightness-110 ${item.enabled ? '' : 'opacity-55'}`}>
       <div className="flex items-center gap-2.5">
@@ -174,38 +194,32 @@ function ReminderCard({
         </Select>
       </div>
 
-      {/* 间隔轮盘：天/时/分/秒 + 下次提醒 */}
-      <div className="mt-3 flex items-start gap-2">
-        <div className="grid flex-1 grid-cols-4 gap-1.5">
-          <Wheel label="天" value={d} min={0} max={7} onChange={(v) => setIntervalParts({ d: v })} />
-          <Wheel label="时" value={h} min={0} max={23} onChange={(v) => setIntervalParts({ h: v })} />
-          <Wheel label="分" value={m} min={0} max={59} onChange={(v) => setIntervalParts({ m: v })} />
-          <Wheel label="秒" value={s} min={0} max={59} step={5} onChange={(v) => setIntervalParts({ s: v })} />
-        </div>
-        <div className="flex w-[104px] flex-none flex-col gap-1.5 pt-0.5">
-          <div className="text-[11px] text-muted-foreground">下次提醒</div>
-          <div className="text-sm font-semibold tabular-nums">{formatNext(nextAt)}</div>
-          <Input
-            type="datetime-local"
-            title="设置起始计算时间，此后按间隔顺延"
-            className="h-7 px-1.5 text-xs"
-            value={item.anchorAt ? toLocalInput(item.anchorAt) : ''}
-            onChange={(e) => {
-              const t = new Date(e.target.value).getTime()
-              onChange({ anchorAt: Number.isFinite(t) && t > 0 ? t : undefined })
-            }}
-          />
-          {item.anchorAt && (
-            <button
-              type="button"
-              className="cursor-pointer text-left text-[11px] text-muted-foreground hover:text-primary"
-              onClick={() => onChange({ anchorAt: undefined })}
-            >
-              ↻ 清除锚点，从现在起算
-            </button>
-          )}
-        </div>
-      </div>
+      <Row label="间隔">
+        <Select
+          value={selectValue}
+          onValueChange={(v) => {
+            if (v !== 'custom') {
+              onChange({ intervalSeconds: Number(v) })
+              setMoreOpen(false)
+            } else {
+              setMoreOpen(true)
+            }
+          }}
+        >
+          <SelectTrigger className="text-[13px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {presetMatch && <SelectItem value={String(presetMatch.value)}>{presetMatch.label}</SelectItem>}
+            <SelectItem value="custom">自定义（{describeSeconds(item.intervalSeconds)}）</SelectItem>
+            {INTERVAL_PRESETS.filter((p) => p.value !== item.intervalSeconds).map((p) => (
+              <SelectItem key={p.value} value={String(p.value)}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Row>
 
       <Textarea
         rows={2}
@@ -228,7 +242,44 @@ function ReminderCard({
       {/* 更多设置：动效展开 */}
       <div className={cn('grid transition-all duration-200', moreOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
         <div className="overflow-hidden">
-          <div className="mt-1 flex flex-col gap-2.5 border-t border-border/40 pt-2.5">
+          <div className="mt-1 flex flex-col gap-3 border-t border-border/40 pt-2.5">
+            {/* 时间精调轮盘 */}
+            <div className="flex flex-col gap-1.5">
+              <div className="text-xs text-muted-foreground">时间精调</div>
+              <div className="grid grid-cols-4 gap-1.5">
+                <Wheel label="天" value={d} min={0} max={7} onChange={(v) => setIntervalParts({ d: v })} />
+                <Wheel label="时" value={h} min={0} max={23} onChange={(v) => setIntervalParts({ h: v })} />
+                <Wheel label="分" value={m} min={0} max={59} onChange={(v) => setIntervalParts({ m: v })} />
+                <Wheel label="秒" value={s} min={0} max={59} step={5} onChange={(v) => setIntervalParts({ s: v })} />
+              </div>
+            </div>
+            {/* 下次提醒 / 起始锚点 */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  下次提醒 <span className="font-semibold text-foreground">{formatNext(nextAt)}</span>
+                </span>
+                {item.anchorAt && (
+                  <button
+                    type="button"
+                    className="cursor-pointer hover:text-primary"
+                    onClick={() => onChange({ anchorAt: undefined })}
+                  >
+                    ↻ 清除锚点，从现在起算
+                  </button>
+                )}
+              </div>
+              <Input
+                type="datetime-local"
+                title="设置起始计算时间，此后按间隔顺延（重启保持）"
+                className="h-8 text-xs"
+                value={item.anchorAt ? toLocalInput(item.anchorAt) : ''}
+                onChange={(e) => {
+                  const t = new Date(e.target.value).getTime()
+                  onChange({ anchorAt: Number.isFinite(t) && t > 0 ? t : undefined })
+                }}
+              />
+            </div>
             <label className="flex items-center justify-between text-xs text-muted-foreground">
               每日目标
               <span className="flex items-center gap-1.5">
@@ -291,6 +342,28 @@ function ReminderCard({
       </div>
     </div>
   )
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-border/50 py-2.5 text-sm">
+      <span className="flex-none text-muted-foreground">{label}</span>
+      {children}
+    </div>
+  )
+}
+
+function describeSeconds(seconds: number): string {
+  const d = Math.floor(seconds / 86_400)
+  const h = Math.floor((seconds % 86_400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  const parts: string[] = []
+  if (d) parts.push(`${d} 天`)
+  if (h) parts.push(`${h} 小时`)
+  if (m) parts.push(`${m} 分`)
+  if (s) parts.push(`${s} 秒`)
+  return parts.join(' ') || `${seconds} 秒`
 }
 
 function toLocalInput(ms: number): string {
