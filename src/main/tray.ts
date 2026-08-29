@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { getConfig } from './store'
 import { inQuietHours } from '@shared/quiet'
 import { isManualMeeting } from './meeting'
+import { isFullscreenApp } from './fullscreen'
 import { todayCheckinCount } from './stats'
 import type { Scheduler } from './scheduler'
 
@@ -26,6 +27,7 @@ function statusText(scheduler: Scheduler): string {
   const cfg = getConfig()
   if (cfg.paused) return 'Notify：已暂停'
   if (isManualMeeting()) return 'Notify：会议模式（手动）'
+  if (isFullscreenApp()) return 'Notify：全屏应用中（免打扰）'
   if (inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)) {
     return `Notify：安静时段（至 ${cfg.quietEnd}）`
   }

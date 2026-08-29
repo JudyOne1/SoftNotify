@@ -319,6 +319,13 @@ export default function SettingsApp(): React.JSX.Element {
                   onCheckedChange={(v) => void patch({ meetingDetect: v })}
                 />
               </Row>
+              <Row label="全屏应用时自动免打扰">
+                <Switch
+                  title="前台应用铺满屏幕（观影/游戏）时自动静默提醒"
+                  checked={config.fullscreenDetect}
+                  onCheckedChange={(v) => void patch({ fullscreenDetect: v })}
+                />
+              </Row>
               <Row label="休眠错过的提醒">
                 <Select
                   value={config.missedPolicy}

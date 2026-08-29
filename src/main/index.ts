@@ -11,6 +11,7 @@ import { applyAutostart } from './autostart'
 import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './audio'
 import { initAutoUpdater, registerUpdateIpc } from './updater'
 import { isManualMeeting, isMeeting, setManualMeeting, startMeetingPolling } from './meeting'
+import { isFullscreenApp, startFullscreenPolling } from './fullscreen'
 import { festivalGreeting } from './festivals'
 import { addHistory, getHistory } from './history'
 import { addCheckin, getStats, startUsageTracking, todayCountFor } from './stats'
@@ -55,8 +56,12 @@ function findItem(itemId: string | undefined): ItemEntry | null {
 function remind(entry: ItemEntry | null, manual = false): void {
   const cfg = getConfig()
   const meeting = isMeeting()
+  const fullscreen = isFullscreenApp()
   const inQuiet =
-    !manual && (meeting || (!entry?.ignoreQuiet && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)))
+    !manual &&
+    (meeting ||
+      fullscreen ||
+      (!entry?.ignoreQuiet && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)))
   if (!inQuiet) {
     let text = pickText(entry?.item ?? null)
     if (cfg.festivalEnabled && festivalShownOn !== todayStr()) {
@@ -212,6 +217,7 @@ if (!app.requestSingleInstanceLock()) {
     startUsageTracking()
     // 会议模式自动检测：状态变化只影响提醒静默与托盘展示
     startMeetingPolling(() => refreshTray(handlers, scheduler))
+    startFullscreenPolling(() => refreshTray(handlers, scheduler))
 
     if (process.argv.includes('--remind-now')) {
       setTimeout(() => remind(findItem(undefined), true), 1500)

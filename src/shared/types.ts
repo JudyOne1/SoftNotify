@@ -98,6 +98,8 @@ export interface Config {
   quietEnd: string
   /** 检测到摄像头/麦克风使用时自动免打扰（仅 Windows） */
   meetingDetect: boolean
+  /** 前台应用全屏（观影/游戏）时自动免打扰 */
+  fullscreenDetect: boolean
   /** 休眠错过提醒的策略：补发 / 丢弃 */
   missedPolicy: 'fire' | 'skip'
   /** 弹幕颜色主题 */
