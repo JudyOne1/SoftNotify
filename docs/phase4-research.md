@@ -15,20 +15,28 @@ _2026-08-29 起草。对应 ideas.md 中被选中的四个方向：一（定时�
 
 **调研**：现有 `ReminderItem.intervalMinutes` 是纯间隔模型。定时点场景（每天 10:00 站会、23:00 睡觉提醒、一次性倒计时）需要绝对的钟点/日期触发。参考主流做法（cron 子集），桌面提醒只需四种触发方式，不需要完整 cron。
 
-**方案**：`ReminderItem` 增加 `schedule` 判别联合，向后兼容迁移：
+**方案**（所有者已确认：**两类列表**）：间隔提醒保持 `reminders: ReminderItem[]` 不动（零迁移），新增 `schedules: ScheduleItem[]` 定时日程：
 
 ```ts
-type Schedule =
-  | { kind: 'interval'; intervalMinutes: number }        // 现有行为
-  | { kind: 'daily'; time: string; weekdays?: number[] } // HH:MM + 周几（空=每天）
-  | { kind: 'once'; at: string }                         // ISO 时间，触发后自动停用
+interface ScheduleItem {
+  id: string
+  name: string
+  enabled: boolean
+  /** HH:MM */
+  time: string
+  /** 周几（0-6，周日=0）；空 = 每天 */
+  weekdays: number[]
+  /** 一次性日程：YYYY-MM-DD，触发后自动停用；空 = 周期性 */
+  date?: string
+  texts: string[]
+  /** 忽略安静时段（如睡前提醒） */
+  ignoreQuiet: boolean
+}
 ```
 
-- 旧配置读取时自动包装为 `{ kind: 'interval', intervalMinutes }`
-- Scheduler 每项的 `nextAt` 计算函数按 kind 分派；`daily` 计算「下一个满足 HH:MM + weekdays 的时刻」；`once` 直接取绝对时间，触发后 `enabled → false`（弹幕提示已过期）
-- 改动文件：`shared/types.ts`、`main/store.ts`（normalize/迁移）、`main/scheduler.ts`（nextAt 计算）、`renderer/settings`（触发方式选择器）、`shared/templates.ts`（不动）
-- **安静时段冲突**：定时 23:00 的「该睡了」会被默认安静时段（22:00-08:00）吞掉。方案：每项加「忽略安静时段」开关（默认关），睡前提醒类场景勾上即可
-- 一次性倒计时：设置页「＋ 倒计时」按钮 → 输入分钟数生成 `once` 项；托盘不单做入口（设置里已够用）
+- 无旧数据迁移；设置页两个区块（「定时计划」「间隔提醒」），「＋ 倒计时」快捷创建一次性日程
+- Scheduler 对两类统一维护 nextAt，定时日程按「下一个满足 time+weekdays(+date) 的本地时刻」计算；`once` 触发后主进程将其 `enabled → false`
+- 改动文件：`shared/types.ts`、`main/store.ts`（normalize）、`main/scheduler.ts`（nextAt 计算）、`renderer/settings`（新区块）、托盘（两类合并取最近）
 
 **成本**：中。风险点在 scheduler 差量更新逻辑要按 schedule 值（而非仅 interval）做变更检测。
 
@@ -79,9 +87,11 @@ type Schedule =
 
 ## 10. 分批建议
 
+_2026-08-29 所有者已确认：批次 1+2+3 全做；定时提醒采用**两类列表**（间隔提醒与定时日程分开，现有数据零迁移）；节日弹幕引入 lunar-typescript；AI 文案延后。_
+
 | 批次 | 内容 | 理由 |
 |---|---|---|
-| 批次 1 | §1 定时模型 + §5 时段文案 + §4 Profile | 同碰数据模型，一次迁移 |
+| 批次 1 | §1 定时模型（两类列表：`reminders` 间隔 + `schedules` 定时日程） + §5 时段文案 + §4 Profile | 同碰数据模型 |
 | 批次 2 | §2 自动更新（含 CI 改造） + §3 引导/Star | 发布基建，互不依赖批次 1 |
 | 批次 3 | §6 样式 + §7 历史 + §8 节日 | 纯体验增强，随时可插队 |
 | 待议 | §9 各项 | 见暂缓理由 |

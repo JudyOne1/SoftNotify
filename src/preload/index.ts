@@ -6,6 +6,8 @@ const api = {
   setConfig: (patch: Partial<Config>): Promise<Config> => ipcRenderer.invoke('config:set', patch),
   testReminder: (itemId?: string): Promise<void> => ipcRenderer.invoke('notify:test', itemId),
   chooseAudio: (): Promise<AudioChoiceResult> => ipcRenderer.invoke('audio:choose'),
+  applyProfile: (id: string): Promise<Config> => ipcRenderer.invoke('profile:apply', id),
+  saveProfile: (name: string): Promise<Config> => ipcRenderer.invoke('profile:save', name),
   onReminder: (callback: (payload: ReminderPayload) => void): void => {
     ipcRenderer.on('notify:reminder', (_event, payload: ReminderPayload) => callback(payload))
   },

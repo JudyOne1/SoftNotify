@@ -6,6 +6,7 @@ import type { Scheduler } from './scheduler'
 
 export interface TrayHandlers {
   onRemindNow: (itemId: string) => void
+  onApplyProfile: (id: string) => void
   onTogglePause: () => void
   onOpenSettings: () => void
 }
@@ -21,27 +22,49 @@ function statusText(scheduler: Scheduler): string {
   if (inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)) {
     return `Notify：安静时段（至 ${cfg.quietEnd}）`
   }
-  const next = cfg.reminders.find((r) => r.id === scheduler.nextItemId())
-  const label = next ? `${next.name} ` : ''
-  const minutes = scheduler.nextInMinutes()
-  if (!minutes && !next) return 'Notify：无已启用的提醒'
-  return `Notify：${label}${minutes} 分钟后提醒`
+  const due = scheduler.nextDue()
+  if (!due) return 'Notify：无已启用的提醒'
+  const name =
+    cfg.reminders.find((r) => r.id === due.id)?.name ?? cfg.schedules.find((s) => s.id === due.id)?.name ?? ''
+  return `Notify：${name ? `${name} ` : ''}${scheduler.nextInMinutes()} 分钟后提醒`
+}
+
+/** 立即提醒子菜单：定时日程在前、间隔提醒在后 */
+function remindSubmenu(handlers: TrayHandlers): MenuItemConstructorOptions {
+  const cfg = getConfig()
+  const entries: MenuItemConstructorOptions[] = [
+    ...cfg.schedules.filter((s) => s.enabled).map((s) => ({ label: s.name, click: () => handlers.onRemindNow(s.id) })),
+    ...cfg.reminders.filter((r) => r.enabled).map((r) => ({ label: r.name, click: () => handlers.onRemindNow(r.id) }))
+  ]
+  return {
+    label: '立即提醒一次',
+    submenu: entries.length ? entries : [{ label: '（无已启用的提醒）', enabled: false }]
+  }
+}
+
+function profileSubmenu(handlers: TrayHandlers): MenuItemConstructorOptions {
+  const cfg = getConfig()
+  if (cfg.profiles.length === 0) {
+    return { label: '模式', submenu: [{ label: '（尚未保存模式，可在设置中创建）', enabled: false }] }
+  }
+  return {
+    label: '模式',
+    submenu: cfg.profiles.map((p) => ({
+      label: p.name,
+      type: 'radio' as const,
+      checked: cfg.activeProfile === p.id,
+      click: () => handlers.onApplyProfile(p.id)
+    }))
+  }
 }
 
 function buildMenu(handlers: TrayHandlers, scheduler: Scheduler): Menu {
   const cfg = getConfig()
-  const status = statusText(scheduler)
-  const enabled = cfg.reminders.filter((r) => r.enabled)
-  const remindMenu: MenuItemConstructorOptions = {
-    label: '立即提醒一次',
-    submenu: enabled.length
-      ? enabled.map((r) => ({ label: r.name, click: () => handlers.onRemindNow(r.id) }))
-      : [{ label: '（无已启用的提醒）', enabled: false }]
-  }
   return Menu.buildFromTemplate([
-    { label: status, enabled: false },
+    { label: statusText(scheduler), enabled: false },
     { type: 'separator' },
-    remindMenu,
+    remindSubmenu(handlers),
+    profileSubmenu(handlers),
     { label: cfg.paused ? '恢复提醒' : '暂停提醒', click: handlers.onTogglePause },
     { type: 'separator' },
     { label: '打开设置', click: handlers.onOpenSettings },

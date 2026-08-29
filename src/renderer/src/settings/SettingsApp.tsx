@@ -1,28 +1,14 @@
 import { useEffect, useState } from 'react'
-import type { Config, ReminderItem } from '@shared/types'
-import { REMINDER_PRESETS } from '@shared/templates'
+import type { Config } from '@shared/types'
+import RemindersSection from './RemindersSection'
+import SchedulesSection from './SchedulesSection'
+import ProfilesSection from './ProfilesSection'
 import './settings.css'
-
-const INTERVAL_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240]
-
-interface ReminderDraft {
-  id: string
-  name: string
-  interval: number
-  texts: string
-}
-
-let localId = 0
-function newId(): string {
-  return `local-${Date.now().toString(36)}-${localId++}`
-}
 
 export default function SettingsApp(): React.JSX.Element {
   const [config, setConfig] = useState<Config | null>(null)
   const [saved, setSaved] = useState(false)
   const [audioNote, setAudioNote] = useState('')
-  /** 名称/文案的本地草稿：失焦或回车才写回配置，避免每次按键被服务端清洗后打断输入 */
-  const [drafts, setDrafts] = useState<Record<string, ReminderDraft>>({})
 
   useEffect(() => {
     void window.notifyAPI.getConfig().then(setConfig)
@@ -33,44 +19,6 @@ export default function SettingsApp(): React.JSX.Element {
     setConfig(next)
     setSaved(true)
     setTimeout(() => setSaved(false), 1200)
-  }
-
-  function draftOf(item: ReminderItem): ReminderDraft {
-    return drafts[item.id] ?? { id: item.id, name: item.name, interval: item.intervalMinutes, texts: item.texts.join('\n') }
-  }
-
-  function setDraft(item: ReminderItem, draft: Partial<ReminderDraft>): void {
-    setDrafts((prev) => {
-      const base = prev[item.id] ?? {
-        id: item.id,
-        name: item.name,
-        interval: item.intervalMinutes,
-        texts: item.texts.join('\n')
-      }
-      return { ...prev, [item.id]: { ...base, ...draft } }
-    })
-  }
-
-  async function commitDraft(item: ReminderItem): Promise<void> {
-    const draft = drafts[item.id]
-    if (!draft) return
-    const name = draft.name
-    const texts = draft.texts
-    setDrafts((prev) => {
-      const next = { ...prev }
-      delete next[item.id]
-      return next
-    })
-    // 提交后以服务端清洗结果为准，清掉本地草稿
-    await patch({
-      reminders: (config?.reminders ?? []).map((r) =>
-        r.id === item.id ? { ...r, name, texts: texts.split('\n').map((t) => t.trim()) } : r
-      )
-    })
-  }
-
-  async function updateItem(id: string, p: Partial<ReminderItem>): Promise<void> {
-    await patch({ reminders: (config?.reminders ?? []).map((r) => (r.id === id ? { ...r, ...p } : r)) })
   }
 
   async function chooseAudioFile(): Promise<void> {
@@ -86,19 +34,8 @@ export default function SettingsApp(): React.JSX.Element {
     setTimeout(() => setAudioNote(''), 2500)
   }
 
-  async function addItem(presetIndex: number | null): Promise<void> {    const preset = presetIndex === null ? null : REMINDER_PRESETS[presetIndex]
-    const item: ReminderItem = {
-      id: newId(),
-      name: preset?.name ?? '新提醒',
-      enabled: true,
-      intervalMinutes: preset?.intervalMinutes ?? 30,
-      texts: preset ? [...preset.texts] : []
-    }
-    await patch({ reminders: [...(config?.reminders ?? []), item] })
-  }
-
-  async function removeItem(id: string): Promise<void> {
-    await patch({ reminders: (config?.reminders ?? []).filter((r) => r.id !== id) })
+  async function deleteProfile(id: string): Promise<void> {
+    await patch({ profiles: (config?.profiles ?? []).filter((p) => p.id !== id) })
   }
 
   if (!config) {
@@ -114,71 +51,30 @@ export default function SettingsApp(): React.JSX.Element {
       <div className="settings">
         <h1>Notify 设置</h1>
 
-        <h2>提醒计划</h2>
-        <div className="plan-list">
-          {config.reminders.map((item) => {
-            const draft = draftOf(item)
-            return (
-              <div key={item.id} className={`plan-card${item.enabled ? '' : ' plan-off'}`}>
-                <div className="plan-head">
-                  <input
-                    type="checkbox"
-                    checked={item.enabled}
-                    title="启用该提醒"
-                    onChange={(e) => void updateItem(item.id, { enabled: e.target.checked })}
-                  />
-                  <input
-                    className="plan-name"
-                    value={draft.name}
-                    maxLength={20}
-                    placeholder="提醒名称"
-                    onChange={(e) => setDraft(item, { name: e.target.value })}
-                    onBlur={() => void commitDraft(item)}
-                    onKeyDown={(e) => e.key === 'Enter' && void commitDraft(item)}
-                  />
-                  <select
-                    value={item.intervalMinutes}
-                    title="提醒间隔"
-                    onChange={(e) => void updateItem(item.id, { intervalMinutes: Number(e.target.value) })}
-                  >
-                    {INTERVAL_OPTIONS.map((m) => (
-                      <option key={m} value={m}>
-                        {m < 60 ? `${m} 分钟` : `${m / 60} 小时`}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="button" className="plan-del" title="删除" onClick={() => void removeItem(item.id)}>
-                    ✕
-                  </button>
-                </div>
-                <textarea
-                  className="plan-texts"
-                  rows={3}
-                  value={draft.texts}
-                  placeholder="每行一条弹幕文案，留空则使用内置通用文案"
-                  onChange={(e) => setDraft(item, { texts: e.target.value })}
-                  onBlur={() => void commitDraft(item)}
-                />
-                <div className="plan-foot">
-                  <button type="button" className="link" onClick={() => void window.notifyAPI.testReminder(item.id)}>
-                    试一下
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-          {config.reminders.length === 0 && <div className="plan-empty">还没有提醒项，从下面添加一个吧</div>}
-        </div>
-        <div className="plan-add">
-          <button type="button" onClick={() => void addItem(null)}>
-            ＋ 空白提醒
-          </button>
-          {REMINDER_PRESETS.map((p, i) => (
-            <button key={p.name} type="button" onClick={() => void addItem(i)}>
-              ＋ {p.name}
-            </button>
-          ))}
-        </div>
+        <h2>间隔提醒</h2>
+        <p className="section-hint">每隔一段时间提醒一次</p>
+        <RemindersSection
+          reminders={config.reminders}
+          onChange={(reminders) => void patch({ reminders })}
+          onTest={(id) => void window.notifyAPI.testReminder(id)}
+        />
+
+        <h2>定时日程</h2>
+        <p className="section-hint">每天/每周几的固定钟点触发，也可设单次倒计时</p>
+        <SchedulesSection
+          schedules={config.schedules}
+          onChange={(schedules) => void patch({ schedules })}
+          onTest={(id) => void window.notifyAPI.testReminder(id)}
+        />
+
+        <h2>模式</h2>
+        <ProfilesSection
+          profiles={config.profiles}
+          activeProfile={config.activeProfile}
+          onApply={(id) => void window.notifyAPI.applyProfile(id)}
+          onSave={(name) => void window.notifyAPI.saveProfile(name)}
+          onDelete={(id) => void deleteProfile(id)}
+        />
 
         <label className="row">
           <span>声音提醒</span>

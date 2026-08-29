@@ -1,8 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import type { Config, ReminderItem } from '@shared/types'
+import type { Config, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
 import { pickText } from '@shared/templates'
 import { inQuietHours } from '@shared/quiet'
-import { getConfig, updateConfig } from './store'
+import { PROFILE_FIELDS, getConfig, updateConfig } from './store'
 import { Scheduler } from './scheduler'
 import { createOverlays, registerDisplayEvents, sendReminder } from './overlay'
 import { openSettings } from './settings-window'
@@ -18,22 +18,33 @@ function audioUrl(): string | undefined {
   return cfg.audioMode === 'file' && cfg.audioFileName ? `media://localhost/${cfg.audioFileName}` : undefined
 }
 
-function findItem(itemId: string | undefined): ReminderItem | null {
-  const cfg = getConfig()
-  if (itemId) {
-    const item = cfg.reminders.find((r) => r.id === itemId)
-    if (item) return item
-  }
-  // 未指定或已删除：回退到第一个已启用项
-  return cfg.reminders.find((r) => r.enabled) ?? null
+interface ItemEntry {
+  item: ReminderItem | ScheduleItem
+  ignoreQuiet: boolean
 }
 
-/** manual=true 时绕过安静时段（手动"立即提醒"/测试） */
-function remind(item: ReminderItem | null, manual = false): void {
+/** 在两类计划中找提醒项；未指定或已删除时回退到第一个已启用项 */
+function findItem(itemId: string | undefined): ItemEntry | null {
   const cfg = getConfig()
-  const inQuiet = !manual && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)
+  if (itemId) {
+    const r = cfg.reminders.find((x) => x.id === itemId)
+    if (r) return { item: r, ignoreQuiet: false }
+    const s = cfg.schedules.find((x) => x.id === itemId)
+    if (s) return { item: s, ignoreQuiet: s.ignoreQuiet }
+  }
+  const r = cfg.reminders.find((x) => x.enabled)
+  if (r) return { item: r, ignoreQuiet: false }
+  const s = cfg.schedules.find((x) => x.enabled)
+  if (s) return { item: s, ignoreQuiet: s.ignoreQuiet }
+  return null
+}
+
+/** manual=true 时绕过安静时段（手动"立即提醒"/测试）；单项 ignoreQuiet 也可豁免 */
+function remind(entry: ItemEntry | null, manual = false): void {
+  const cfg = getConfig()
+  const inQuiet = !manual && !entry?.ignoreQuiet && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)
   if (!inQuiet) {
-    sendReminder(pickText(item), cfg.soundEnabled, cfg.volume, audioUrl())
+    sendReminder(pickText(entry?.item ?? null), cfg.soundEnabled, cfg.volume, audioUrl())
   }
   refreshTray(handlers, scheduler)
 }
@@ -44,20 +55,70 @@ function broadcastConfig(cfg: Config): void {
   }
 }
 
-const handlers: TrayHandlers = {  onRemindNow: (itemId: string) => {
-    const item = findItem(itemId)
-    remind(item, true)
+/** 统一收尾：按暂停状态对账调度器、广播、刷托盘 */
+function applyConfig(next: Config): void {
+  if (next.paused) {
+    scheduler.stop()
+  } else {
+    scheduler.sync(next.reminders, next.schedules)
+  }
+  broadcastConfig(next)
+  refreshTray(handlers, scheduler)
+}
+
+/** 一次性日程过期后自动停用（含应用关闭期间错过的） */
+function expireOnceSchedules(): Config {
+  const cfg = getConfig()
+  const now = Date.now()
+  const expired = (s: ScheduleItem): boolean =>
+    s.enabled && !!s.date && new Date(`${s.date}T${s.time}:00`).getTime() <= now
+  if (!cfg.schedules.some(expired)) return cfg
+  return updateConfig({ schedules: cfg.schedules.map((s) => (expired(s) ? { ...s, enabled: false } : s)) })
+}
+
+/** 保存当前设置为新的 Profile（快照覆盖字段全集，保证应用结果可预期） */
+function saveProfile(name: string): Config {
+  const cfg = getConfig()
+  const patch: ProfilePatch = {}
+  const source = cfg as unknown as Record<string, unknown>
+  const target = patch as Record<string, unknown>
+  for (const field of PROFILE_FIELDS) {
+    target[field] = source[field]
+  }
+  const profile: Profile = {
+    id: `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    name: name.trim().slice(0, 20) || '新模式',
+    patch
+  }
+  const next = updateConfig({ profiles: [...cfg.profiles, profile], activeProfile: profile.id })
+  applyConfig(next)
+  return next
+}
+
+function applyProfile(id: string): Config {
+  const cfg = getConfig()
+  const profile = cfg.profiles.find((p) => p.id === id)
+  if (!profile) return cfg
+  const next = updateConfig({ ...profile.patch, activeProfile: profile.id })
+  applyConfig(next)
+  return next
+}
+
+const handlers: TrayHandlers = {
+  onRemindNow: (itemId: string) => {
+    const entry = findItem(itemId)
+    remind(entry, true)
     const cfg = getConfig()
-    if (!cfg.paused && item?.enabled) {
-      scheduler.resetItem(item.id)
+    if (!cfg.paused && entry && 'intervalMinutes' in entry.item && entry.item.enabled) {
+      scheduler.resetItem(entry.item.id)
     }
+  },
+  onApplyProfile: (id: string) => {
+    applyProfile(id)
   },
   onTogglePause: () => {
     const next = updateConfig({ paused: !getConfig().paused })
-    scheduler.stop()
-    if (!next.paused) scheduler.sync(next.reminders)
-    broadcastConfig(next)
-    refreshTray(handlers, scheduler)
+    applyConfig(next)
   },
   onOpenSettings: () => openSettings()
 }
@@ -71,11 +132,24 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => openSettings())
 
   void app.whenReady().then(() => {
-    const cfg = getConfig()
-    applyAutostart(cfg.autostart)
+    applyAutostart(getConfig().autostart)
+    const cfg = expireOnceSchedules()
 
-    scheduler = new Scheduler((itemId) => remind(findItem(itemId)))
-    if (!cfg.paused) scheduler.sync(cfg.reminders)
+    scheduler = new Scheduler((source, itemId) => {
+      remind(findItem(itemId), false)
+      if (source === 'schedule') {
+        // 一次性日程触发后自动停用
+        const s = getConfig().schedules.find((x) => x.id === itemId)
+        if (s?.date && s.enabled) {
+          const next = updateConfig({
+            schedules: getConfig().schedules.map((x) => (x.id === itemId ? { ...x, enabled: false } : x))
+          })
+          broadcastConfig(next)
+          refreshTray(handlers, scheduler)
+        }
+      }
+    })
+    if (!cfg.paused) scheduler.sync(cfg.reminders, cfg.schedules)
 
     createOverlays()
     registerDisplayEvents()
@@ -93,22 +167,21 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('config:get', () => getConfig())
     ipcMain.handle('config:set', (_event, patch: Partial<Config>) => {
       const next = updateConfig(patch)
-      if (patch.reminders !== undefined || patch.paused !== undefined) {
-        if (next.paused) {
-          scheduler.stop()
-        } else {
-          scheduler.sync(next.reminders)
-        }
-      }
       if (patch.autostart !== undefined) applyAutostart(next.autostart)
       scheduler.missedPolicy = next.missedPolicy
-      broadcastConfig(next)
-      refreshTray(handlers, scheduler)
+      if (patch.reminders !== undefined || patch.schedules !== undefined || patch.paused !== undefined) {
+        applyConfig(next)
+      } else {
+        broadcastConfig(next)
+        refreshTray(handlers, scheduler)
+      }
       return next
     })
     ipcMain.handle('notify:test', (_event, itemId?: string) => {
       remind(findItem(itemId), true)
     })
+    ipcMain.handle('profile:apply', (_event, id: string) => applyProfile(String(id)))
+    ipcMain.handle('profile:save', (_event, name: string) => saveProfile(String(name)))
   })
 }
 

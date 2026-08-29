@@ -8,11 +8,54 @@ export interface ReminderItem {
   intervalMinutes: number
   /** 自定义文案，随机抽取；为空时回退内置通用文案 */
   texts: string[]
+  /** 夜间文案（22:00-06:00 优先使用）；为空回退 texts */
+  nightTexts?: string[]
+}
+
+/** 定时日程：按钟点触发（每天/每周几/一次性），与间隔提醒分开管理 */
+export interface ScheduleItem {
+  id: string
+  name: string
+  enabled: boolean
+  /** 触发时刻 HH:MM */
+  time: string
+  /** 周几（0-6，周日=0）；空数组 = 每天 */
+  weekdays: number[]
+  /** 一次性日程的日期 YYYY-MM-DD；为空 = 周期性。触发后自动停用 */
+  date?: string
+  texts: string[]
+  /** 夜间文案（22:00-06:00 优先使用）；为空回退 texts */
+  nightTexts?: string[]
+  /** 忽略安静时段（如 23:00 睡前提醒落在安静时段内） */
+  ignoreQuiet: boolean
+}
+
+/** Profile：快照「提醒计划 + 定时日程 + 安静时段 + 弹幕外观」，一键切换场景 */
+export interface Profile {
+  id: string
+  name: string
+  patch: ProfilePatch
+}
+
+export interface ProfilePatch {
+  reminders?: ReminderItem[]
+  schedules?: ScheduleItem[]
+  quietEnabled?: boolean
+  quietStart?: string
+  quietEnd?: string
+  theme?: Config['theme']
+  speed?: Config['speed']
 }
 
 export interface Config {
-  /** 提醒计划：多个提醒项，各自间隔与文案 */
+  /** 间隔提醒计划 */
   reminders: ReminderItem[]
+  /** 定时日程计划 */
+  schedules: ScheduleItem[]
+  /** 已保存的 Profile */
+  profiles: Profile[]
+  /** 当前激活的 Profile id */
+  activeProfile: string | null
   /** 是否播放提示音 */
   soundEnabled: boolean
   /** 提示音音量 0-1 */
