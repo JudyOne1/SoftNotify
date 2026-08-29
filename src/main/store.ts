@@ -24,6 +24,7 @@ export const DEFAULT_CONFIG: Config = {
   speed: 'normal',
   danmaku: { opacity: 1, fontScale: 1, stroke: true },
   festivalEnabled: true,
+  themeMode: 'system',
   audioMode: 'synth',
   audioFileName: ''
 }
@@ -183,6 +184,15 @@ export function normalizeProfiles(input: unknown): Profile[] {
   return items
 }
 
+/** 窗口尺寸清洗 */
+function normalizeBounds(input: unknown): { width: number; height: number } | undefined {
+  if (!input || typeof input !== 'object') return undefined
+  const w = Math.round(Number((input as { width?: unknown }).width))
+  const h = Math.round(Number((input as { height?: unknown }).height))
+  if (!Number.isFinite(w) || !Number.isFinite(h)) return undefined
+  return { width: Math.min(1200, Math.max(560, w)), height: Math.min(1000, Math.max(560, h)) }
+}
+
 export function getConfig(): Config {
   if (!cache) {
     try {
@@ -196,6 +206,8 @@ export function getConfig(): Config {
         profiles: normalizeProfiles(stored.profiles ?? []),
         danmaku: normalizeDanmaku(stored.danmaku),
         festivalEnabled: stored.festivalEnabled !== false,
+        themeMode: stored.themeMode === 'light' || stored.themeMode === 'dark' ? stored.themeMode : 'system',
+        settingsWindow: normalizeBounds(stored.settingsWindow),
         activeProfile: typeof stored.activeProfile === 'string' ? stored.activeProfile : null
       }
     } catch (error) {
@@ -217,6 +229,10 @@ export function updateConfig(patch: Partial<Config>): Config {
   next.audioFileName = /^[\w.-]+$/.test(next.audioFileName ?? '') ? next.audioFileName : ''
   next.danmaku = normalizeDanmaku(patch.danmaku !== undefined ? patch.danmaku : getConfig().danmaku)
   next.festivalEnabled = next.festivalEnabled !== false
+  next.themeMode = next.themeMode === 'light' || next.themeMode === 'dark' ? next.themeMode : 'system'
+  if (patch.settingsWindow !== undefined) {
+    next.settingsWindow = normalizeBounds(patch.settingsWindow)
+  }
   cache = next
 
   const file = configFile()

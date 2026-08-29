@@ -15,6 +15,7 @@ const api = {
     ipcRenderer.on('update:status', (_event, status: UpdateStatus) => callback(status))
   },
   getHistory: (): Promise<Array<{ text: string; name?: string; at: number }>> => ipcRenderer.invoke('history:get'),
+  getUiEnv: (): Promise<{ nativeMaterial: boolean }> => ipcRenderer.invoke('ui:env'),
   onReminder: (callback: (payload: ReminderPayload) => void): void => {
     ipcRenderer.on('notify:reminder', (_event, payload: ReminderPayload) => callback(payload))
   },

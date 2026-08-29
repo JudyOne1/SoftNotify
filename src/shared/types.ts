@@ -91,6 +91,10 @@ export interface Config {
   danmaku: DanmakuStyle
   /** 节日祝福：当天首次提醒自动附加节日问候 */
   festivalEnabled: boolean
+  /** 界面主题：跟随系统 / 亮色 / 暗色 */
+  themeMode: 'system' | 'light' | 'dark'
+  /** 设置窗口尺寸记忆 */
+  settingsWindow?: { width: number; height: number }
   /** 提示音来源：合成 / 自定义音频文件 */
   audioMode: 'synth' | 'file'
   /** 自定义音频文件名（存于 userData/audio/ 下），空表示未选择 */

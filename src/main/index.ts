@@ -5,7 +5,7 @@ import { inQuietHours } from '@shared/quiet'
 import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig } from './store'
 import { Scheduler } from './scheduler'
 import { createOverlays, registerDisplayEvents, sendReminder } from './overlay'
-import { openSettings } from './settings-window'
+import { openSettings, usesNativeMaterial } from './settings-window'
 import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
 import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './audio'
@@ -205,6 +205,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('profile:save', (_event, name: string) => saveProfile(String(name)))
     ipcMain.handle('app:version', () => app.getVersion())
     ipcMain.handle('history:get', () => getHistory())
+    ipcMain.handle('ui:env', () => ({ nativeMaterial: usesNativeMaterial() }))
     ipcMain.handle('open:external', (_event, url: string) => {
       // 只允许打开 GitHub 相关链接，防任意跳转
       if (/^https:\/\/(www\.)?github\.com\/JudyOne1\/SoftNotify/.test(url)) void shell.openExternal(url)
