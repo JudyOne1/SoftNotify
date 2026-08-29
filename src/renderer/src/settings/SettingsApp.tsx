@@ -74,6 +74,8 @@ export default function SettingsApp(): React.JSX.Element {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [active, setActive] = useState<SectionKey>('reminders')
   const [displays, setDisplays] = useState<Array<{ index: number; primary: boolean; width: number; height: number }> | null>(null)
+  /** 生效主题（themeMode=system 时随系统切换），传给需要配色适配的分区 */
+  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('dark')
 
   useEffect(() => {
     void window.notifyAPI.getConfig().then(setConfig)
@@ -97,8 +99,9 @@ export default function SettingsApp(): React.JSX.Element {
   useEffect(() => {
     const mql = window.matchMedia('(prefers-color-scheme: light)')
     const apply = (): void => {
-      document.documentElement.dataset.theme =
-        themeMode === 'system' ? (mql.matches ? 'light' : 'dark') : themeMode
+      const theme = themeMode === 'system' ? (mql.matches ? 'light' : 'dark') : themeMode
+      document.documentElement.dataset.theme = theme
+      setEffectiveTheme(theme)
     }
     apply()
     mql.addEventListener('change', apply)
@@ -496,7 +499,7 @@ export default function SettingsApp(): React.JSX.Element {
           {active === 'stats' && (
             <>
               <SectionTitle title="统计" hint="打卡与活跃时长，仅保存在本机" />
-              <StatsSection />
+              <StatsSection theme={effectiveTheme} />
             </>
           )}
 

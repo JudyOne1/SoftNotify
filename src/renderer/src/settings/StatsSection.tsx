@@ -6,25 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 type Metric = 'checkins' | 'usage'
 
-function useScheme(): 'light' | 'dark' {
-  const [scheme, setScheme] = useState<'light' | 'dark'>('dark')
-  useEffect(() => {
-    const mql = window.matchMedia('(prefers-color-scheme: light)')
-    const apply = (): void => setScheme(mql.matches ? 'light' : 'dark')
-    apply()
-    mql.addEventListener('change', apply)
-    return () => mql.removeEventListener('change', apply)
-  }, [])
-  return scheme
-}
-
-/** 统计分区：活跃图 + 今日进度 + 导出（嵌入设置窗口侧栏） */
-export default function StatsSection(): React.JSX.Element {
+/** 统计分区：活跃图 + 今日进度 + 导出（嵌入设置窗口侧栏）。theme 为设置窗口的生效主题（非系统偏好） */
+export default function StatsSection({ theme }: { theme: 'light' | 'dark' }): React.JSX.Element {
   const [stats, setStats] = useState<StatsSummary | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
   const [metric, setMetric] = useState<Metric>('checkins')
   const [exported, setExported] = useState(false)
-  const scheme = useScheme()
 
   useEffect(() => {
     void window.notifyAPI.getStats().then(setStats)
@@ -86,7 +73,7 @@ export default function StatsSection(): React.JSX.Element {
               light: ['#e3e6ec', '#c6e9fb', '#7dd3fc', '#38bdf8', '#0284c7'],
               dark: ['#1e2430', '#164e63', '#0e7490', '#22d3ee', '#67e8f9']
             }}
-            colorScheme={scheme}
+            colorScheme={theme}
             fontSize={11}
             labels={{ legend: { less: '少', more: '多' } }}
           />
