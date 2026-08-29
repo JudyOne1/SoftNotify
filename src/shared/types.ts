@@ -12,6 +12,8 @@ export interface ReminderItem {
   nightTexts?: string[]
   /** 每日打卡目标次数（1-99）；为空不设目标 */
   dailyGoal?: number
+  /** 重要提醒：弹幕更大更慢，可联动系统通知 */
+  priority?: 'high'
 }
 
 /** 定时日程：按钟点触发（每天/每周几/一次性），与间隔提醒分开管理 */
@@ -30,6 +32,8 @@ export interface ScheduleItem {
   nightTexts?: string[]
   /** 每日打卡目标次数（1-99）；为空不设目标 */
   dailyGoal?: number
+  /** 重要提醒：弹幕更大更慢，可联动系统通知 */
+  priority?: 'high'
   /** 忽略安静时段（如 23:00 睡前提醒落在安静时段内） */
   ignoreQuiet: boolean
 }
@@ -95,6 +99,8 @@ export interface Config {
   danmaku: DanmakuStyle
   /** 节日祝福：当天首次提醒自动附加节日问候 */
   festivalEnabled: boolean
+  /** 重要提醒同时发 Windows 系统通知 */
+  highPriorityNotify: boolean
   /** 界面主题：跟随系统 / 亮色 / 暗色 */
   themeMode: 'system' | 'light' | 'dark'
   /** 设置窗口尺寸记忆 */
@@ -113,6 +119,8 @@ export interface ReminderPayload {
   audioUrl?: string
   /** 来源提醒项 id，用于打卡 */
   itemId?: string
+  /** 重要提醒：更大更慢展示 */
+  priority?: 'high'
 }
 
 /** 选择自定义音频的结果 */

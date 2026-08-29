@@ -11,6 +11,7 @@ interface DanmakuItem {
   fontSize: number
   color: string
   itemId?: string
+  lane: number
 }
 
 const THEMES: Record<Config['theme'], string[]> = {
@@ -25,23 +26,36 @@ const SPEEDS: Record<Config['speed'], [min: number, max: number]> = {
   fast: [5, 9]
 }
 
+/** 屏幕纵向车道数：多条弹幕同时出现时避免重叠 */
+const LANE_COUNT = 6
+
 let nextId = 0
 
-function randomItem(text: string, itemId: string | undefined, config: Config | null): DanmakuItem {
+function randomItem(
+  text: string,
+  itemId: string | undefined,
+  priority: 'high' | undefined,
+  config: Config | null,
+  lane: number
+): DanmakuItem {
   const colors = THEMES[config?.theme ?? 'sky']
   const [min, max] = SPEEDS[config?.speed ?? 'normal']
-  // 时长按文案长度自适应：长文慢飘，读得完
+  // 时长按文案长度自适应：长文慢飘，读得完；重要提醒再放慢 1.5 倍
   const base = min + Math.random() * (max - min)
-  const factor = 0.8 + text.length / 40
-  const duration = Math.min(max * 1.6, Math.max(min * 0.8, base * factor))
+  const factor = (0.8 + text.length / 40) * (priority === 'high' ? 1.5 : 1)
+  const duration = Math.min(max * 1.8, Math.max(min * 0.8, base * factor))
+  // 车道内随机小偏移，避免同车道也完全同高
+  const laneHeight = 100 / LANE_COUNT
+  const top = lane * laneHeight + laneHeight * (0.2 + Math.random() * 0.6)
   return {
     id: nextId++,
     text,
-    top: 8 + Math.random() * 70,
+    top,
     duration,
-    fontSize: 28 + Math.floor(Math.random() * 5) * 4,
+    fontSize: Math.round((28 + Math.floor(Math.random() * 5) * 4) * (priority === 'high' ? 1.35 : 1)),
     color: colors[Math.floor(Math.random() * colors.length)],
-    itemId
+    itemId,
+    lane
   }
 }
 
@@ -49,8 +63,10 @@ export default function OverlayApp(): React.JSX.Element {
   const [items, setItems] = useState<DanmakuItem[]>([])
   const configRef = useRef<Config | null>(null)
   const [style, setStyle] = useState({ opacity: 1, fontScale: 1, stroke: true })
-  /** 记录上次穿透状态，避免每个 mousemove 都发 IPC */
-  const lastIgnore = useRef(true)
+  /** 各弹幕交互区元素引用，用于向主进程上报可点击区域 */
+  const wrapperRefs = useRef(new Map<number, HTMLElement>())
+  /** 各车道当前占用数 */
+  const lanes = useRef<number[]>(new Array(LANE_COUNT).fill(0))
 
   useEffect(() => {
     void window.notifyAPI.getConfig().then((c) => {
@@ -62,26 +78,32 @@ export default function OverlayApp(): React.JSX.Element {
       if (c.danmaku) setStyle(c.danmaku)
     })
     window.notifyAPI.onReminder((payload) => {
-      setItems((prev) => [...prev, randomItem(payload.text, payload.itemId, configRef.current)])
+      // 选最空的车道；全满则随机
+      let lane = lanes.current.indexOf(Math.min(...lanes.current))
+      if (lanes.current[lane] > 2) lane = Math.floor(Math.random() * LANE_COUNT)
+      lanes.current[lane]++
+      setItems((prev) => [...prev, randomItem(payload.text, payload.itemId, payload.priority, configRef.current, lane)])
       if (payload.sound) playReminderSound(payload.volume, payload.audioUrl)
     })
   }, [])
 
-  /** 悬停检测：鼠标在弹幕/按钮上时关闭穿透以接收点击，离开后恢复穿透 */
+  /** 弹幕集合变化时，把交互区矩形上报给主进程（主进程轮询光标做悬停穿透切换） */
   useEffect(() => {
-    const onMove = (e: MouseEvent): void => {
-      const el = document.elementFromPoint(e.clientX, e.clientY)
-      const overUi = !!(el && el.closest('[data-dm-ui]'))
-      if (overUi === lastIgnore.current) {
-        lastIgnore.current = !overUi
-        window.notifyAPI.setOverlayIgnore(!overUi)
-      }
-    }
-    document.addEventListener('mousemove', onMove)
-    return () => document.removeEventListener('mousemove', onMove)
-  }, [])
+    const rects = Array.from(wrapperRefs.current.values()).map((el) => {
+      const r = el.getBoundingClientRect()
+      // 高度额外包含下方浮出的打卡按钮
+      return { x: r.left, y: r.top, w: r.width, h: r.height + 52 }
+    })
+    window.notifyAPI.setOverlayUiRects(rects)
+  }, [items, style])
 
-  const remove = (id: number): void => setItems((prev) => prev.filter((item) => item.id !== id))
+  const remove = (id: number): void => {
+    setItems((prev) => {
+      const item = prev.find((i) => i.id === id)
+      if (item) lanes.current[item.lane] = Math.max(0, lanes.current[item.lane] - 1)
+      return prev.filter((i) => i.id !== id)
+    })
+  }
 
   const done = (item: DanmakuItem): void => {
     if (item.itemId) void window.notifyAPI.checkin(item.itemId)
@@ -95,6 +117,10 @@ export default function OverlayApp(): React.JSX.Element {
           key={item.id}
           data-dm-ui
           className="danmaku-wrap"
+          ref={(el) => {
+            if (el) wrapperRefs.current.set(item.id, el)
+            else wrapperRefs.current.delete(item.id)
+          }}
           style={{ top: `${item.top}%`, animationDuration: `${item.duration}s` }}
           onAnimationEnd={() => remove(item.id)}
         >

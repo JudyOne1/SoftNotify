@@ -16,7 +16,8 @@ const api = {
   },
   getHistory: (): Promise<Array<{ text: string; name?: string; at: number }>> => ipcRenderer.invoke('history:get'),
   getUiEnv: (): Promise<{ nativeMaterial: boolean }> => ipcRenderer.invoke('ui:env'),
-  setOverlayIgnore: (ignore: boolean): void => ipcRenderer.send('overlay:set-ignore', ignore),
+  setOverlayUiRects: (rects: Array<{ x: number; y: number; w: number; h: number }>): void =>
+    ipcRenderer.send('overlay:set-ui-rects', rects),
   checkin: (itemId: string): Promise<void> => ipcRenderer.invoke('checkin', itemId),
   getStats: (): Promise<StatsSummary> => ipcRenderer.invoke('stats:get'),
   exportStats: (): Promise<{ canceled: boolean }> => ipcRenderer.invoke('stats:export'),

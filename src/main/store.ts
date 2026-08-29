@@ -24,6 +24,7 @@ export const DEFAULT_CONFIG: Config = {
   speed: 'normal',
   danmaku: { opacity: 1, fontScale: 1, stroke: true },
   festivalEnabled: true,
+  highPriorityNotify: false,
   themeMode: 'system',
   audioMode: 'synth',
   audioFileName: ''
@@ -96,7 +97,16 @@ function normalizeItemCommon(seen: Set<string>, raw: Record<string, unknown>) {
   const nightTexts = normalizeTexts(raw['nightTexts'], 10)
   const goalRaw = Number(raw['dailyGoal'])
   const dailyGoal = Number.isFinite(goalRaw) && goalRaw >= 1 ? Math.min(99, Math.round(goalRaw)) : undefined
-  return { id, name: name || '提醒', enabled, texts, nightTexts: nightTexts.length ? nightTexts : undefined, ...(dailyGoal ? { dailyGoal } : {}) }
+  const priority = raw['priority'] === 'high' ? 'high' as const : undefined
+  return {
+    id,
+    name: name || '提醒',
+    enabled,
+    texts,
+    nightTexts: nightTexts.length ? nightTexts : undefined,
+    ...(dailyGoal ? { dailyGoal } : {}),
+    ...(priority ? { priority } : {})
+  }
 }
 
 /** 清洗间隔提醒列表 */
@@ -214,6 +224,7 @@ export function getConfig(): Config {
         profiles: normalizeProfiles(stored.profiles ?? []),
         danmaku: normalizeDanmaku(stored.danmaku),
         festivalEnabled: stored.festivalEnabled !== false,
+        highPriorityNotify: stored.highPriorityNotify === true,
         themeMode: stored.themeMode === 'light' || stored.themeMode === 'dark' ? stored.themeMode : 'system',
         settingsWindow: normalizeBounds(stored.settingsWindow),
         activeProfile: typeof stored.activeProfile === 'string' ? stored.activeProfile : null
@@ -247,6 +258,7 @@ export function updateConfig(patch: Partial<Config>): Config {
   next.audioFileName = /^[\w.-]+$/.test(next.audioFileName ?? '') ? next.audioFileName : ''
   next.danmaku = normalizeDanmaku(patch.danmaku !== undefined ? patch.danmaku : getConfig().danmaku)
   next.festivalEnabled = next.festivalEnabled !== false
+  next.highPriorityNotify = next.highPriorityNotify === true
   next.themeMode = next.themeMode === 'light' || next.themeMode === 'dark' ? next.themeMode : 'system'
   if (patch.settingsWindow !== undefined) {
     next.settingsWindow = normalizeBounds(patch.settingsWindow)

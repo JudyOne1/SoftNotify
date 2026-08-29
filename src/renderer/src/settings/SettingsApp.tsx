@@ -333,6 +333,13 @@ export default function SettingsApp(): React.JSX.Element {
                   onCheckedChange={(v) => void patch({ festivalEnabled: v })}
                 />
               </Row>
+              <Row label="重要提醒进系统通知">
+                <Switch
+                  title="标为「重要」的提醒同时发 Windows 系统通知"
+                  checked={config.highPriorityNotify}
+                  onCheckedChange={(v) => void patch({ highPriorityNotify: v })}
+                />
+              </Row>
             </>
           )}
 

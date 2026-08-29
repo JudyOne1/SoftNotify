@@ -5,6 +5,19 @@ import { preloadPath, rendererUrl } from './paths'
 const windows = new Map<number, BrowserWindow>()
 let primaryId: number | null = null
 
+export interface UiRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** 每个弹幕窗口的可交互区域（窗口内容坐标），由渲染层上报 */
+const uiRects = new Map<number, UiRect[]>()
+/** 各窗口当前是否处于穿透状态 */
+const ignoreState = new Map<number, boolean>()
+let hoverTimer: NodeJS.Timeout | null = null
+
 function createOverlayFor(display: Display): void {
   const { x, y, width, height } = display.workArea
   const win = new BrowserWindow({
@@ -34,11 +47,56 @@ function createOverlayFor(display: Display): void {
 
   win.setAlwaysOnTop(true, 'screen-saver')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-  // forward=true：穿透时仍把鼠标移动转发给渲染层，用于检测悬停弹幕（打卡按钮）
-  win.setIgnoreMouseEvents(true, { forward: true })
+  win.setIgnoreMouseEvents(true)
+  ignoreState.set(win.id, true)
   win.once('ready-to-show', () => win.show())
   void win.loadURL(rendererUrl('/overlay'))
   windows.set(display.id, win)
+}
+
+function setWinIgnore(win: BrowserWindow, ignore: boolean): void {
+  const id = win.id
+  if (ignoreState.get(id) === ignore) return
+  ignoreState.set(id, ignore)
+  win.setIgnoreMouseEvents(ignore)
+}
+
+/**
+ * 悬停检测：轮询光标位置，命中弹幕交互区则关闭该窗口穿透（接收点击），否则保持穿透。
+ * 不用 setIgnoreMouseEvents(forward:true)——该选项在本机触发渲染进程崩溃。
+ */
+export function startHoverPolling(): void {
+  if (hoverTimer) return
+  hoverTimer = setInterval(() => {
+    try {
+      const cursor = screen.getCursorScreenPoint()
+      for (const win of windows.values()) {
+        if (win.isDestroyed()) continue
+        const rects = uiRects.get(win.id) ?? []
+        let hover = false
+        if (rects.length > 0) {
+          const b = win.getBounds()
+          if (cursor.x >= b.x && cursor.x <= b.x + b.width && cursor.y >= b.y && cursor.y <= b.y + b.height) {
+            const lx = cursor.x - b.x
+            const ly = cursor.y - b.y
+            hover = rects.some((r) => lx >= r.x && lx <= r.x + r.w && ly >= r.y && ly <= r.y + r.h)
+          }
+        }
+        setWinIgnore(win, !hover)
+      }
+    } catch {
+      // 光标查询异常时保持现状
+    }
+  }, 80)
+}
+
+export function stopHoverPolling(): void {
+  if (hoverTimer) clearInterval(hoverTimer)
+  hoverTimer = null
+}
+
+export function setOverlayUiRects(win: BrowserWindow, rects: UiRect[]): void {
+  uiRects.set(win.id, rects)
 }
 
 export function createOverlays(): void {
@@ -54,6 +112,8 @@ export function destroyOverlays(): void {
     if (!win.isDestroyed()) win.destroy()
   }
   windows.clear()
+  uiRects.clear()
+  ignoreState.clear()
 }
 
 /** 显示器变化（增删、分辨率/缩放变化）时重建窗口 */
@@ -64,16 +124,15 @@ export function registerDisplayEvents(): void {
   screen.on('display-metrics-changed', refresh)
 }
 
-/** 切换穿透；悬停弹幕按钮时关闭穿透以接收点击 */
-export function setOverlayIgnoreMouse(ignore: boolean): void {
-  for (const win of windows.values()) {
-    if (win.isDestroyed()) continue
-    win.setIgnoreMouseEvents(ignore, { forward: true })
-  }
-}
-
 /** 向所有屏幕广播弹幕；提示音只由主屏窗口播放，避免重复发声 */
-export function sendReminder(text: string, soundEnabled: boolean, volume: number, audioUrl?: string, itemId?: string): void {
+export function sendReminder(
+  text: string,
+  soundEnabled: boolean,
+  volume: number,
+  audioUrl?: string,
+  itemId?: string,
+  priority?: 'high'
+): void {
   for (const [id, win] of windows) {
     if (win.isDestroyed()) continue
     const payload: ReminderPayload = {
@@ -81,7 +140,8 @@ export function sendReminder(text: string, soundEnabled: boolean, volume: number
       sound: soundEnabled && id === primaryId,
       volume,
       audioUrl,
-      itemId
+      itemId,
+      priority
     }
     win.webContents.send('notify:reminder', payload)
   }

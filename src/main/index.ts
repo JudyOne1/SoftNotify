@@ -1,10 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron'
 import type { Config, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
 import { pickText } from '@shared/templates'
 import { inQuietHours } from '@shared/quiet'
 import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig, wasConfigCorrupted } from './store'
 import { Scheduler } from './scheduler'
-import { createOverlays, registerDisplayEvents, sendReminder, setOverlayIgnoreMouse } from './overlay'
+import { createOverlays, registerDisplayEvents, sendReminder, setOverlayUiRects, startHoverPolling } from './overlay'
 import { openSettings, usesNativeMaterial } from './settings-window'
 import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
@@ -65,8 +65,16 @@ function remind(entry: ItemEntry | null, manual = false): void {
         festivalShownOn = todayStr()
       }
     }
-    sendReminder(text, cfg.soundEnabled, cfg.volume, audioUrl(), entry?.item.id)
+    const high = entry?.item.priority === 'high'
+    sendReminder(text, cfg.soundEnabled, cfg.volume, audioUrl(), entry?.item.id, high ? 'high' : undefined)
     addHistory({ text, name: entry?.item.name, at: Date.now() })
+    if (high && cfg.highPriorityNotify && Notification.isSupported()) {
+      new Notification({
+        title: entry?.item.name ? `Notify · ${entry.item.name}` : 'Notify',
+        body: text,
+        silent: cfg.soundEnabled
+      }).show()
+    }
   }
   refreshTray(handlers, scheduler)
 }
@@ -190,6 +198,7 @@ if (!app.requestSingleInstanceLock()) {
 
     createOverlays()
     registerDisplayEvents()
+    startHoverPolling()
     createTray(handlers, scheduler)
     handleMediaProtocol()
     registerAudioIpc()
@@ -226,7 +235,10 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('app:version', () => app.getVersion())
     ipcMain.handle('history:get', () => getHistory())
     ipcMain.handle('ui:env', () => ({ nativeMaterial: usesNativeMaterial() }))
-    ipcMain.on('overlay:set-ignore', (_event, ignore: boolean) => setOverlayIgnoreMouse(Boolean(ignore)))
+    ipcMain.on('overlay:set-ui-rects', (event, rects: Array<{ x: number; y: number; w: number; h: number }>) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (win && Array.isArray(rects)) setOverlayUiRects(win, rects)
+    })
     ipcMain.handle('checkin', (_event, itemId: string) => {
       addCheckin(String(itemId))
       refreshTray(handlers, scheduler)

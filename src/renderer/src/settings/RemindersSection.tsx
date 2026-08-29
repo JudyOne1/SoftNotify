@@ -122,6 +122,18 @@ function ReminderCard({
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={item.priority ?? 'normal'}
+          onValueChange={(v) => onChange({ priority: v === 'high' ? 'high' : undefined })}
+        >
+          <SelectTrigger className="text-[13px]" title="重要提醒更大更慢，可联动系统通知">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="normal">普通</SelectItem>
+            <SelectItem value="high">重要</SelectItem>
+          </SelectContent>
+        </Select>
         <Button variant="destructive" size="icon" title="删除" onClick={onDelete}>
           ✕
         </Button>
