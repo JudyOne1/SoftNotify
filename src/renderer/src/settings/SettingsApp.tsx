@@ -193,10 +193,10 @@ export default function SettingsApp(): React.JSX.Element {
                   activeProfile={config.activeProfile}
                   reminders={config.reminders}
                   schedules={config.schedules}
-                  onApply={(id) => void window.notifyAPI.applyProfile(id)}
-                  onSave={(name) => void window.notifyAPI.saveProfile(name)}
+                  onApply={(id) => void window.notifyAPI.applyProfile(id).then(setConfig)}
+                  onSave={(name) => void window.notifyAPI.saveProfile(name).then(setConfig)}
                   onDelete={(id) => void deleteProfile(id)}
-                  onUpdateItems={(id, itemIds) => void window.notifyAPI.updateProfileItems(id, itemIds)}
+                  onUpdateItems={(id, itemIds) => void window.notifyAPI.updateProfileItems(id, itemIds).then(setConfig)}
                 />
             </>
           )}

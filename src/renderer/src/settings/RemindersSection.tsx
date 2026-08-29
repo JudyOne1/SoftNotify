@@ -253,25 +253,22 @@ function ReminderCard({
                 <Wheel label="秒" value={s} min={0} max={59} step={5} onChange={(v) => setIntervalParts({ s: v })} />
               </div>
             </div>
-            {/* 下次提醒 / 起始锚点 */}
+            {/* 起始时间：下次提醒 = 起始时间 + N×间隔 */}
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  下次提醒 <span className="font-semibold text-foreground">{formatNext(nextAt)}</span>
-                </span>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">起始时间（可选）</span>
                 {item.anchorAt && (
                   <button
                     type="button"
                     className="cursor-pointer hover:text-primary"
                     onClick={() => onChange({ anchorAt: undefined })}
                   >
-                    ↻ 清除锚点，从现在起算
+                    ↻ 恢复默认
                   </button>
                 )}
               </div>
               <Input
                 type="datetime-local"
-                title="设置起始计算时间，此后按间隔顺延（重启保持）"
                 className="h-8 text-xs"
                 value={item.anchorAt ? toLocalInput(item.anchorAt) : ''}
                 onChange={(e) => {
@@ -279,6 +276,12 @@ function ReminderCard({
                   onChange({ anchorAt: Number.isFinite(t) && t > 0 ? t : undefined })
                 }}
               />
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                默认从现在开始计算。设置后，提醒将从该时刻起按间隔顺延（重启后仍保持）。
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                下次提醒：<span className="font-semibold text-foreground">{formatNext(nextAt)}</span>
+              </p>
             </div>
             <label className="flex items-center justify-between text-xs text-muted-foreground">
               每日目标
