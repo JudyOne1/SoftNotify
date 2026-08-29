@@ -301,6 +301,13 @@ export default function SettingsApp(): React.JSX.Element {
                   />
                 </span>
               </Row>
+              <Row label="摄像头/麦克风占用时自动免打扰">
+                <Switch
+                  title="检测到摄像头或麦克风使用（如开会）时自动静默提醒，仅 Windows"
+                  checked={config.meetingDetect}
+                  onCheckedChange={(v) => void patch({ meetingDetect: v })}
+                />
+              </Row>
               <Row label="休眠错过的提醒">
                 <Select
                   value={config.missedPolicy}

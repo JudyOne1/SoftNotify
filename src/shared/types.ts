@@ -96,6 +96,8 @@ export interface Config {
   quietStart: string
   /** 安静时段结束 HH:MM */
   quietEnd: string
+  /** 检测到摄像头/麦克风使用时自动免打扰（仅 Windows） */
+  meetingDetect: boolean
   /** 休眠错过提醒的策略：补发 / 丢弃 */
   missedPolicy: 'fire' | 'skip'
   /** 弹幕颜色主题 */

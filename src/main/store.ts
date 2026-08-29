@@ -21,6 +21,7 @@ export const DEFAULT_CONFIG: Config = {
   quietEnabled: true,
   quietStart: '22:00',
   quietEnd: '08:00',
+  meetingDetect: false,
   missedPolicy: 'fire',
   theme: 'sky',
   speed: 'normal',
@@ -244,6 +245,7 @@ export function getConfig(): Config {
         profiles: normalizeProfiles(stored.profiles ?? []),
         danmaku: normalizeDanmaku(stored.danmaku),
         festivalEnabled: stored.festivalEnabled !== false,
+        meetingDetect: stored.meetingDetect === true,
         highPriorityNotify: stored.highPriorityNotify === true,
         hoverInteraction: stored.hoverInteraction !== false,
         displayMode: ['all', 'primary', 'custom'].includes(stored.displayMode as string)
@@ -296,6 +298,7 @@ export function updateConfig(patch: Partial<Config>): Config {
     : 'classic'
   next.danmaku = normalizeDanmaku(patch.danmaku !== undefined ? patch.danmaku : getConfig().danmaku)
   next.festivalEnabled = next.festivalEnabled !== false
+  next.meetingDetect = next.meetingDetect === true
   next.highPriorityNotify = next.highPriorityNotify === true
   next.hoverInteraction = next.hoverInteraction !== false
   next.displayMode = ['all', 'primary', 'custom'].includes(next.displayMode as string)

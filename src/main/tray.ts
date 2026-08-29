@@ -2,6 +2,7 @@ import { Menu, Tray, app, nativeImage, type MenuItemConstructorOptions, type Nat
 import { join } from 'node:path'
 import { getConfig } from './store'
 import { inQuietHours } from '@shared/quiet'
+import { isManualMeeting } from './meeting'
 import { todayCheckinCount } from './stats'
 import type { Scheduler } from './scheduler'
 
@@ -10,6 +11,7 @@ export interface TrayHandlers {
   onCheckinNow: (itemId: string) => void
   onApplyProfile: (id: string) => void
   onTogglePause: () => void
+  onToggleMeeting: () => void
   onOpenSettings: () => void
   onOpenHistory: () => void
   onOpenStats: () => void
@@ -23,6 +25,7 @@ let iconPaused: NativeImage | null = null
 function statusText(scheduler: Scheduler): string {
   const cfg = getConfig()
   if (cfg.paused) return 'Notify：已暂停'
+  if (isManualMeeting()) return 'Notify：会议模式（手动）'
   if (inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)) {
     return `Notify：安静时段（至 ${cfg.quietEnd}）`
   }
@@ -89,6 +92,12 @@ function buildMenu(handlers: TrayHandlers, scheduler: Scheduler): Menu {
     checkinSubmenu(handlers),
     profileSubmenu(handlers),
     { label: cfg.paused ? '恢复提醒' : '暂停提醒', click: handlers.onTogglePause },
+    {
+      label: '会议模式（静默）',
+      type: 'checkbox' as const,
+      checked: isManualMeeting(),
+      click: handlers.onToggleMeeting
+    },
     { type: 'separator' },
     { label: '打卡统计', click: handlers.onOpenStats },
     { label: '弹幕历史', click: handlers.onOpenHistory },

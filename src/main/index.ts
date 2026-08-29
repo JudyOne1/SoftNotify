@@ -10,6 +10,7 @@ import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
 import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './audio'
 import { initAutoUpdater, registerUpdateIpc } from './updater'
+import { isManualMeeting, isMeeting, setManualMeeting, startMeetingPolling } from './meeting'
 import { festivalGreeting } from './festivals'
 import { addHistory, getHistory } from './history'
 import { openHistory } from './history-window'
@@ -52,10 +53,12 @@ function findItem(itemId: string | undefined): ItemEntry | null {
   return null
 }
 
-/** manual=true 时绕过安静时段（手动"立即提醒"/测试）；单项 ignoreQuiet 也可豁免 */
+/** manual=true 时绕过安静时段（手动"立即提醒"/测试）；会议模式优先级最高，任何提醒都静默 */
 function remind(entry: ItemEntry | null, manual = false): void {
   const cfg = getConfig()
-  const inQuiet = !manual && !entry?.ignoreQuiet && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)
+  const meeting = isMeeting()
+  const inQuiet =
+    !manual && (meeting || (!entry?.ignoreQuiet && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)))
   if (!inQuiet) {
     let text = pickText(entry?.item ?? null)
     if (cfg.festivalEnabled && festivalShownOn !== todayStr()) {
@@ -163,6 +166,11 @@ const handlers: TrayHandlers = {
     const next = updateConfig({ paused: !getConfig().paused })
     applyConfig(next)
   },
+  /** 托盘会议模式开关（仅手动；自动检测独立运行） */
+  onToggleMeeting: () => {
+    setManualMeeting(!isManualMeeting())
+    refreshTray(handlers, scheduler)
+  },
   onOpenSettings: () => openSettings(),
   onOpenHistory: () => openHistory(),
   onOpenStats: () => openStats()
@@ -204,6 +212,8 @@ if (!app.requestSingleInstanceLock()) {
     handleMediaProtocol()
     registerAudioIpc()
     startUsageTracking()
+    // 会议模式自动检测：状态变化只影响提醒静默与托盘展示
+    startMeetingPolling(() => refreshTray(handlers, scheduler))
 
     if (process.argv.includes('--remind-now')) {
       setTimeout(() => remind(findItem(undefined), true), 1500)
