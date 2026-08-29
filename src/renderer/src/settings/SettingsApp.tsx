@@ -480,6 +480,13 @@ export default function SettingsApp(): React.JSX.Element {
                   onCheckedChange={(v) => void patch({ hoverInteraction: v })}
                 />
               </Row>
+              <Row label="逐级升级提醒">
+                <Switch
+                  title="同一提醒连续贪睡后，弹幕自动加码"
+                  checked={config.escalateEnabled}
+                  onCheckedChange={(v) => void patch({ escalateEnabled: v })}
+                />
+              </Row>
               <Row label="节日祝福">
                 <Switch
                   checked={config.festivalEnabled}

@@ -31,6 +31,7 @@ const api = {
   setOverlayUiRects: (rects: Array<{ x: number; y: number; w: number; h: number }>): void =>
     ipcRenderer.send('overlay:set-ui-rects', rects),
   checkin: (itemId: string): Promise<void> => ipcRenderer.invoke('checkin', itemId),
+  snoozeReminder: (itemId: string): Promise<void> => ipcRenderer.invoke('snooze', itemId),
   getStats: (): Promise<StatsSummary> => ipcRenderer.invoke('stats:get'),
   exportStats: (): Promise<{ canceled: boolean }> => ipcRenderer.invoke('stats:export'),
   onReminder: (callback: (payload: ReminderPayload) => void): (() => void) => {

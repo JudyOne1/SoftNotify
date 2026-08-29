@@ -11,6 +11,8 @@ interface DanmakuItem {
   fontSize: number
   color: string
   itemId?: string
+  strict?: boolean
+  escalate?: number
   lane: number
 }
 
@@ -52,13 +54,15 @@ function randomItem(
   itemId: string | undefined,
   priority: 'high' | undefined,
   config: Config | null,
-  lane: number
+  lane: number,
+  strict?: boolean,
+  escalate?: number
 ): DanmakuItem {
   const colors = THEMES[config?.theme ?? 'sky']
   const [min, max] = SPEEDS[config?.speed ?? 'normal']
-  // 时长按文案长度自适应：长文慢飘，读得完；重要提醒再放慢 1.5 倍
+  // 时长按文案长度自适应：长文慢飘，读得完；重要/升级再放慢
   const base = min + Math.random() * (max - min)
-  const factor = (0.8 + text.length / 40) * (priority === 'high' ? 1.5 : 1)
+  const factor = (0.8 + text.length / 40) * (priority === 'high' ? 1.5 : 1) * (escalate && escalate >= 2 ? 1.3 : 1)
   const duration = Math.min(max * 1.8, Math.max(min * 0.8, base * factor))
   // 在显示区域内按车道分布，车道内随机小偏移
   const { start, end, laneCount } = resolveZone(config)
@@ -69,9 +73,13 @@ function randomItem(
     text,
     top,
     duration,
-    fontSize: Math.round((28 + Math.floor(Math.random() * 5) * 4) * (priority === 'high' ? 1.35 : 1)),
+    fontSize: Math.round(
+      (28 + Math.floor(Math.random() * 5) * 4) * (priority === 'high' ? 1.35 : 1) * (escalate && escalate >= 2 ? 1.2 : 1)
+    ),
     color: colors[Math.floor(Math.random() * colors.length)],
     itemId,
+    strict,
+    escalate,
     lane
   }
 }
@@ -110,7 +118,10 @@ export default function OverlayApp(): React.JSX.Element {
       }
       if (lanes.current[lane] > 2) lane = Math.floor(Math.random() * laneCount)
       lanes.current[lane]++
-      setItems((prev) => [...prev, randomItem(payload.text, payload.itemId, payload.priority, configRef.current, lane)])
+      setItems((prev) => [
+        ...prev,
+        randomItem(payload.text, payload.itemId, payload.priority, configRef.current, lane, payload.strict, payload.escalate)
+      ])
       if (payload.sound) playReminderSound(payload.volume, payload.audioUrl, payload.soundPreset)
     })
     // 必须退订：HMR/重挂载时监听叠加会导致一次提醒出多条弹幕
@@ -194,9 +205,22 @@ export default function OverlayApp(): React.JSX.Element {
               <button type="button" className="dm-btn dm-done" onClick={() => done(item)}>
                 ✓ 完成了
               </button>
-              <button type="button" className="dm-btn" onClick={() => remove(item.id)}>
-                忽略
+              <button
+                type="button"
+                className="dm-btn"
+                title="5 分钟后再提醒一次"
+                onClick={() => {
+                  if (item.itemId) void window.notifyAPI.snoozeReminder(item.itemId)
+                  remove(item.id)
+                }}
+              >
+                +5 分钟
               </button>
+              {!item.strict && (
+                <button type="button" className="dm-btn" onClick={() => remove(item.id)}>
+                  忽略
+                </button>
+              )}
             </span>
           )}
         </div>

@@ -67,6 +67,15 @@ export const SCHEDULE_PRESETS: Array<{
   }
 ]
 
+/** 逐级升级文案池：同一提醒连续贪睡后随机替换（与提醒项自身文案合并） */
+export const ESCALATION_TEXTS = [
+  '说好的喝水呢？',
+  '上次说 5 分钟后，已经过去 15 分钟啦',
+  '我一直飘着，你一直装看不见是吧',
+  '别划走，就差你一个打卡',
+  '再拖下去我要长在你屏幕上了'
+]
+
 /** 夜间时段（22:00-06:00）触发时优先使用 nightTexts */
 export function isNightTime(now: Date = new Date()): boolean {
   const h = now.getHours()

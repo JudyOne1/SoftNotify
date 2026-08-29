@@ -32,6 +32,7 @@ export const DEFAULT_CONFIG: Config = {
   festivalEnabled: true,
   highPriorityNotify: false,
   hoverInteraction: true,
+  escalateEnabled: true,
   displayMode: 'all',
   customDisplays: [],
   danmakuZone: 'full',
@@ -117,6 +118,7 @@ function normalizeItemCommon(seen: Set<string>, raw: Record<string, unknown>) {
   const soundPreset = SOUND_PRESET_VALUES.includes(preset as SoundPreset) ? (preset as SoundPreset) : undefined
   const anchorRaw = Number(raw['anchorAt'])
   const anchorAt = Number.isFinite(anchorRaw) && anchorRaw > 0 ? anchorRaw : undefined
+  const strict = raw['strict'] === true
   return {
     id,
     name: name || '提醒',
@@ -126,7 +128,8 @@ function normalizeItemCommon(seen: Set<string>, raw: Record<string, unknown>) {
     ...(dailyGoal ? { dailyGoal } : {}),
     ...(priority ? { priority } : {}),
     ...(soundPreset ? { soundPreset } : {}),
-    ...(anchorAt ? { anchorAt } : {})
+    ...(anchorAt ? { anchorAt } : {}),
+    ...(strict ? { strict } : {})
   }
 }
 
@@ -242,6 +245,7 @@ export function getConfig(): Config {
         fullscreenDetect: stored.fullscreenDetect !== false,
         highPriorityNotify: stored.highPriorityNotify === true,
         hoverInteraction: stored.hoverInteraction !== false,
+        escalateEnabled: stored.escalateEnabled !== false,
         displayMode: ['all', 'primary', 'custom'].includes(stored.displayMode as string)
           ? (stored.displayMode as Config['displayMode'])
           : 'all',
@@ -296,6 +300,7 @@ export function updateConfig(patch: Partial<Config>): Config {
   next.fullscreenDetect = next.fullscreenDetect !== false
   next.highPriorityNotify = next.highPriorityNotify === true
   next.hoverInteraction = next.hoverInteraction !== false
+  next.escalateEnabled = next.escalateEnabled !== false
   next.displayMode = ['all', 'primary', 'custom'].includes(next.displayMode as string)
     ? next.displayMode
     : 'all'

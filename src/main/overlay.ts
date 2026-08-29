@@ -154,7 +154,9 @@ export function sendReminder(
   audioUrl?: string,
   itemId?: string,
   priority?: 'high',
-  soundPreset?: Config['soundPreset']
+  soundPreset?: Config['soundPreset'],
+  strict?: boolean,
+  escalate?: number
 ): void {
   const cfgTargets = targetIds(getConfig())
   for (const [id, win] of windows) {
@@ -167,7 +169,9 @@ export function sendReminder(
       audioUrl,
       itemId,
       priority,
-      soundPreset
+      soundPreset,
+      strict,
+      escalate
     }
     win.webContents.send('notify:reminder', payload)
   }

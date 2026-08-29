@@ -323,6 +323,10 @@ function ReminderCard({
               </Select>
             </label>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
+              严格模式（不可忽略）
+              <Switch checked={item.strict ?? false} onCheckedChange={(v) => onChange({ strict: v || undefined })} />
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               夜间文案（22:00-06:00 优先）
               <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setNightOpen(!nightOpen)}>
                 {nightOpen ? '收起' : item.nightTexts?.length ? '已设置 ●' : '设置'}

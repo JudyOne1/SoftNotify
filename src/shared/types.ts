@@ -24,6 +24,8 @@ export interface ReminderItem {
   priority?: 'high'
   /** 提示音音色；为空跟随全局 */
   soundPreset?: SoundPreset
+  /** 严格模式：弹幕不可忽略，只能完成或贪睡 */
+  strict?: boolean
 }
 
 /** 定时日程：按钟点触发（每天/每周几/一次性），与间隔提醒分开管理 */
@@ -111,6 +113,8 @@ export interface Config {
   highPriorityNotify: boolean
   /** 弹幕悬停交互：鼠标移入弹幕暂停并浮出打卡按钮 */
   hoverInteraction: boolean
+  /** 逐级升级：同一提醒连续贪睡后弹幕加码（默认开） */
+  escalateEnabled: boolean
   /** 弹幕输出屏幕：全部 / 仅主屏 / 自定义 */
   displayMode: 'all' | 'primary' | 'custom'
   /** 自定义输出屏幕（按屏幕 x 坐标从左到右的序号，从 0 开始） */
@@ -145,7 +149,12 @@ export interface ReminderPayload {
   priority?: 'high'
   /** 提示音音色（提醒项单独配置，空则全局） */
   soundPreset?: SoundPreset
+  /** 严格模式：不显示「忽略」按钮 */
+  strict?: boolean
+  /** 逐级升级等级（≥2 时弹幕加码） */
+  escalate?: number
 }
+
 /** 选择自定义音频的结果 */
 export interface AudioChoiceResult {
   canceled: boolean

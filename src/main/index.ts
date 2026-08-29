@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Notification, screen, shell } from 'electron'
 import type { Config, Profile, ReminderItem, ScheduleItem } from '@shared/types'
 import { applyItemEnabled, collectEnabledIds } from '@shared/profile-core'
-import { pickText } from '@shared/templates'
+import { pickText, ESCALATION_TEXTS } from '@shared/templates'
 import { inQuietHours } from '@shared/quiet'
 import { getConfig, isFreshConfig, updateConfig, wasConfigCorrupted } from './store'
 import { Scheduler } from './scheduler'
@@ -16,6 +16,7 @@ import { isFullscreenApp, startFullscreenPolling } from './fullscreen'
 import { festivalGreeting } from './festivals'
 import { addHistory, getHistory } from './history'
 import { addCheckin, getStats, startUsageTracking, todayCountFor } from './stats'
+import { registerSnoozeFire, resetSnooze, snoozeItem } from './snooze'
 import { writeFile } from 'node:fs/promises'
 
 let scheduler: Scheduler
@@ -54,7 +55,7 @@ function findItem(itemId: string | undefined): ItemEntry | null {
 }
 
 /** manual=true 时绕过安静时段（手动"立即提醒"/测试）；会议模式优先级最高，任何提醒都静默 */
-function remind(entry: ItemEntry | null, manual = false): void {
+function remind(entry: ItemEntry | null, manual = false, escalateLevel = 0): void {
   const cfg = getConfig()
   const meeting = isMeeting()
   const fullscreen = isFullscreenApp()
@@ -65,6 +66,10 @@ function remind(entry: ItemEntry | null, manual = false): void {
       (!entry?.ignoreQuiet && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)))
   if (!inQuiet) {
     let text = pickText(entry?.item ?? null)
+    const escalate = cfg.escalateEnabled && escalateLevel >= 2
+    if (escalate && Math.random() < 0.6) {
+      text = ESCALATION_TEXTS[Math.floor(Math.random() * ESCALATION_TEXTS.length)]
+    }
     if (cfg.festivalEnabled && festivalShownOn !== todayStr()) {
       const greeting = festivalGreeting()
       if (greeting) {
@@ -73,8 +78,19 @@ function remind(entry: ItemEntry | null, manual = false): void {
       }
     }
     const high = entry?.item.priority === 'high'
+    const strict = (entry?.item as { strict?: boolean }).strict === true
     const preset = entry?.item.soundPreset ?? cfg.soundPreset
-    sendReminder(text, cfg.soundEnabled, cfg.volume, audioUrl(), entry?.item.id, high ? 'high' : undefined, preset)
+    sendReminder(
+      text,
+      cfg.soundEnabled,
+      cfg.volume,
+      audioUrl(),
+      entry?.item.id,
+      high ? 'high' : undefined,
+      preset,
+      strict,
+      escalate ? escalateLevel : undefined
+    )
     addHistory({ text, name: entry?.item.name, at: Date.now() })
     if (high && cfg.highPriorityNotify && Notification.isSupported()) {
       new Notification({
@@ -282,8 +298,13 @@ if (!app.requestSingleInstanceLock()) {
     })
     ipcMain.handle('checkin', (_event, itemId: string) => {
       addCheckin(String(itemId))
+      resetSnooze(String(itemId))
       refreshTray(handlers, scheduler)
     })
+    ipcMain.handle('snooze', (_event, itemId: string) => {
+      snoozeItem(String(itemId))
+    })
+    registerSnoozeFire((itemId, escalateLevel) => remind(findItem(itemId), false, escalateLevel))
     ipcMain.handle('stats:get', () => getStats())
     ipcMain.handle('stats:export', async () => {
       const result = await dialog.showSaveDialog({
