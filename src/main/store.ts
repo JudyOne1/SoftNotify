@@ -27,9 +27,15 @@ export const DEFAULT_CONFIG: Config = {
 }
 
 let cache: Config | null = null
+/** 是否为全新安装（无历史配置文件），用于首启引导 */
+let fresh = false
 
 function configFile(): string {
   return join(app.getPath('userData'), 'config.json')
+}
+
+export function isFreshConfig(): boolean {
+  return fresh
 }
 
 function clampInterval(value: unknown): number {
@@ -155,6 +161,7 @@ export function getConfig(): Config {
   if (!cache) {
     try {
       const stored = JSON.parse(readFileSync(configFile(), 'utf-8')) as Partial<Config>
+      fresh = false
       cache = {
         ...DEFAULT_CONFIG,
         ...stored,
@@ -163,8 +170,9 @@ export function getConfig(): Config {
         profiles: normalizeProfiles(stored.profiles ?? []),
         activeProfile: typeof stored.activeProfile === 'string' ? stored.activeProfile : null
       }
-    } catch {
+    } catch (error) {
       cache = { ...DEFAULT_CONFIG }
+      fresh = (error as NodeJS.ErrnoException).code === 'ENOENT'
     }
   }
   return cache

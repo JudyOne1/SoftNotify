@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AudioChoiceResult, Config, ReminderPayload } from '@shared/types'
+import type { AudioChoiceResult, Config, ReminderPayload, UpdateStatus } from '@shared/types'
 
 const api = {
   getConfig: (): Promise<Config> => ipcRenderer.invoke('config:get'),
@@ -8,6 +8,12 @@ const api = {
   chooseAudio: (): Promise<AudioChoiceResult> => ipcRenderer.invoke('audio:choose'),
   applyProfile: (id: string): Promise<Config> => ipcRenderer.invoke('profile:apply', id),
   saveProfile: (name: string): Promise<Config> => ipcRenderer.invoke('profile:save', name),
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open:external', url),
+  checkUpdate: (): Promise<{ status: UpdateStatus; version?: string }> => ipcRenderer.invoke('update:check'),
+  onUpdateStatus: (callback: (status: UpdateStatus) => void): void => {
+    ipcRenderer.on('update:status', (_event, status: UpdateStatus) => callback(status))
+  },
   onReminder: (callback: (payload: ReminderPayload) => void): void => {
     ipcRenderer.on('notify:reminder', (_event, payload: ReminderPayload) => callback(payload))
   },

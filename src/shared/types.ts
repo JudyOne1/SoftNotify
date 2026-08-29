@@ -98,3 +98,6 @@ export interface AudioChoiceResult {
   /** 失败原因：超过大小限制 / 格式不支持 */
   reason?: 'size' | 'ext'
 }
+
+/** 自动更新状态 */
+export type UpdateStatus = 'idle' | 'checking' | 'downloading' | 'downloaded' | 'up-to-date' | 'error' | 'unsupported'

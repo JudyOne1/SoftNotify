@@ -368,3 +368,78 @@
   outline: none;
   border-color: #38bdf8;
 }
+
+/* 设置页底部 */
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.footer-spacer {
+  flex: 1;
+}
+
+.footer-status {
+  color: #6b7280;
+}
+
+.footer-ver {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 首次安装引导 */
+.welcome-sub {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.8;
+  margin: 0 0 16px;
+}
+
+.bundle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.bundle {
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bundle.bundle-on {
+  border-color: #38bdf8;
+  background: #f0f9ff;
+}
+
+.bundle-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.bundle-desc {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.actions .ghost {
+  background: #fff;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.actions .ghost:hover {
+  background: #f3f4f6;
+}

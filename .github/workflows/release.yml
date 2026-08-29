@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -28,27 +31,9 @@ jobs:
 
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder ${{ matrix.args }} --publish never
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: notify-${{ matrix.os }}
-          path: |
-            release/*.exe
-            release/*.dmg
-            release/*.AppImage
-            release/*.deb
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: artifacts/*
+      # electron-updater 需要 latest*.yml / blockmap 元数据，--publish always
+      # 会把安装包与元数据一起上传到对应 tag 的 draft release，人工确认后发布
+      - run: npx electron-builder ${{ matrix.args }} --publish always
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

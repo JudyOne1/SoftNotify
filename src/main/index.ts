@@ -1,14 +1,15 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import type { Config, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
 import { pickText } from '@shared/templates'
 import { inQuietHours } from '@shared/quiet'
-import { PROFILE_FIELDS, getConfig, updateConfig } from './store'
+import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig } from './store'
 import { Scheduler } from './scheduler'
 import { createOverlays, registerDisplayEvents, sendReminder } from './overlay'
 import { openSettings } from './settings-window'
 import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
 import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './audio'
+import { initAutoUpdater, registerUpdateIpc } from './updater'
 
 let scheduler: Scheduler
 
@@ -132,6 +133,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => openSettings())
 
   void app.whenReady().then(() => {
+    const fresh = isFreshConfig()
     applyAutostart(getConfig().autostart)
     const cfg = expireOnceSchedules()
 
@@ -182,6 +184,18 @@ if (!app.requestSingleInstanceLock()) {
     })
     ipcMain.handle('profile:apply', (_event, id: string) => applyProfile(String(id)))
     ipcMain.handle('profile:save', (_event, name: string) => saveProfile(String(name)))
+    ipcMain.handle('app:version', () => app.getVersion())
+    ipcMain.handle('open:external', (_event, url: string) => {
+      // 只允许打开 GitHub 相关链接，防任意跳转
+      if (/^https:\/\/(www\.)?github\.com\/JudyOne1\/SoftNotify/.test(url)) void shell.openExternal(url)
+    })
+    registerUpdateIpc()
+    initAutoUpdater()
+
+    // 首次安装：打开引导页
+    if (fresh && !process.argv.includes('--no-welcome')) {
+      setTimeout(() => openSettings('/welcome'), 800)
+    }
   })
 }
 
