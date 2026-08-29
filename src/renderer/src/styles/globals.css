@@ -7,6 +7,11 @@
   mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
 }
 
+/* 库的 inline 高度计算有误（8 行只得到 72px），强制轮盘本体填满容器使数字居中 */
+[data-rwp] {
+  height: 100% !important;
+}
+
 /* 暗色变体跟随 data-theme（由渲染层按 config.themeMode + 系统偏好写入） */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
