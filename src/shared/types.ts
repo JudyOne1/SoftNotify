@@ -45,6 +45,17 @@ export interface ProfilePatch {
   quietEnd?: string
   theme?: Config['theme']
   speed?: Config['speed']
+  danmaku?: DanmakuStyle
+}
+
+/** 弹幕外观自定义 */
+export interface DanmakuStyle {
+  /** 不透明度 0.3-1 */
+  opacity: number
+  /** 字号缩放 0.8-1.6 */
+  fontScale: number
+  /** 文字描边/阴影 */
+  stroke: boolean
 }
 
 export interface Config {
@@ -76,6 +87,10 @@ export interface Config {
   theme: 'sky' | 'candy' | 'mono'
   /** 弹幕速度档位 */
   speed: 'slow' | 'normal' | 'fast'
+  /** 弹幕外观 */
+  danmaku: DanmakuStyle
+  /** 节日祝福：当天首次提醒自动附加节日问候 */
+  festivalEnabled: boolean
   /** 提示音来源：合成 / 自定义音频文件 */
   audioMode: 'synth' | 'file'
   /** 自定义音频文件名（存于 userData/audio/ 下），空表示未选择 */

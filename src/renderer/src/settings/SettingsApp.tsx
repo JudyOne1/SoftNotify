@@ -217,6 +217,49 @@ export default function SettingsApp(): React.JSX.Element {
           </select>
         </label>
 
+        <label className="row">
+          <span>节日祝福</span>
+          <input
+            type="checkbox"
+            title="当天首次提醒自动附加节日问候（含农历节日）"
+            checked={config.festivalEnabled}
+            onChange={(e) => void patch({ festivalEnabled: e.target.checked })}
+          />
+        </label>
+
+        <label className="row">
+          <span>不透明度</span>
+          <input
+            type="range"
+            min={0.3}
+            max={1}
+            step={0.05}
+            value={config.danmaku.opacity}
+            onChange={(e) => void patch({ danmaku: { ...config.danmaku, opacity: Number(e.target.value) } })}
+          />
+        </label>
+
+        <label className="row">
+          <span>字号缩放</span>
+          <input
+            type="range"
+            min={0.8}
+            max={1.6}
+            step={0.05}
+            value={config.danmaku.fontScale}
+            onChange={(e) => void patch({ danmaku: { ...config.danmaku, fontScale: Number(e.target.value) } })}
+          />
+        </label>
+
+        <label className="row">
+          <span>文字描边</span>
+          <input
+            type="checkbox"
+            checked={config.danmaku.stroke}
+            onChange={(e) => void patch({ danmaku: { ...config.danmaku, stroke: e.target.checked } })}
+          />
+        </label>
+
         <div className="row actions">
           <button type="button" onClick={() => void window.notifyAPI.testReminder()}>
             测试提醒一次

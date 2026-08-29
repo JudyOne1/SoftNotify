@@ -9,6 +9,7 @@ export interface TrayHandlers {
   onApplyProfile: (id: string) => void
   onTogglePause: () => void
   onOpenSettings: () => void
+  onOpenHistory: () => void
 }
 
 let tray: Tray | null = null
@@ -67,6 +68,7 @@ function buildMenu(handlers: TrayHandlers, scheduler: Scheduler): Menu {
     profileSubmenu(handlers),
     { label: cfg.paused ? '恢复提醒' : '暂停提醒', click: handlers.onTogglePause },
     { type: 'separator' },
+    { label: '弹幕历史', click: handlers.onOpenHistory },
     { label: '打开设置', click: handlers.onOpenSettings },
     { label: '退出 Notify', click: () => app.quit() }
   ])

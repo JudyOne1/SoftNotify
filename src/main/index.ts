@@ -10,8 +10,17 @@ import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
 import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './audio'
 import { initAutoUpdater, registerUpdateIpc } from './updater'
+import { festivalGreeting } from './festivals'
+import { addHistory, getHistory } from './history'
+import { openHistory } from './history-window'
 
 let scheduler: Scheduler
+/** 节日祝福只附加在当天第一条弹幕上 */
+let festivalShownOn = ''
+
+function todayStr(now = new Date()): string {
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
+}
 
 /** 自定义音频的播放地址：file 模式且已选择文件时有效 */
 function audioUrl(): string | undefined {
@@ -45,7 +54,16 @@ function remind(entry: ItemEntry | null, manual = false): void {
   const cfg = getConfig()
   const inQuiet = !manual && !entry?.ignoreQuiet && inQuietHours(cfg.quietEnabled, cfg.quietStart, cfg.quietEnd)
   if (!inQuiet) {
-    sendReminder(pickText(entry?.item ?? null), cfg.soundEnabled, cfg.volume, audioUrl())
+    let text = pickText(entry?.item ?? null)
+    if (cfg.festivalEnabled && festivalShownOn !== todayStr()) {
+      const greeting = festivalGreeting()
+      if (greeting) {
+        text = `${greeting}！${text}`
+        festivalShownOn = todayStr()
+      }
+    }
+    sendReminder(text, cfg.soundEnabled, cfg.volume, audioUrl())
+    addHistory({ text, name: entry?.item.name, at: Date.now() })
   }
   refreshTray(handlers, scheduler)
 }
@@ -121,7 +139,8 @@ const handlers: TrayHandlers = {
     const next = updateConfig({ paused: !getConfig().paused })
     applyConfig(next)
   },
-  onOpenSettings: () => openSettings()
+  onOpenSettings: () => openSettings(),
+  onOpenHistory: () => openHistory()
 }
 
 // 自定义媒体协议必须在 app ready 前注册
@@ -185,6 +204,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('profile:apply', (_event, id: string) => applyProfile(String(id)))
     ipcMain.handle('profile:save', (_event, name: string) => saveProfile(String(name)))
     ipcMain.handle('app:version', () => app.getVersion())
+    ipcMain.handle('history:get', () => getHistory())
     ipcMain.handle('open:external', (_event, url: string) => {
       // 只允许打开 GitHub 相关链接，防任意跳转
       if (/^https:\/\/(www\.)?github\.com\/JudyOne1\/SoftNotify/.test(url)) void shell.openExternal(url)

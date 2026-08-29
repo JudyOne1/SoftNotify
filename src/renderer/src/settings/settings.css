@@ -443,3 +443,31 @@
 .actions .ghost:hover {
   background: #f3f4f6;
 }
+
+/* 弹幕历史 */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 12px;
+}
+
+.history-text {
+  font-size: 13px;
+  color: #1f2329;
+  line-height: 1.6;
+}
+
+.history-meta {
+  font-size: 11px;
+  color: #9ca3af;
+}

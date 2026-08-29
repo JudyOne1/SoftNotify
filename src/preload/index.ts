@@ -14,6 +14,7 @@ const api = {
   onUpdateStatus: (callback: (status: UpdateStatus) => void): void => {
     ipcRenderer.on('update:status', (_event, status: UpdateStatus) => callback(status))
   },
+  getHistory: (): Promise<Array<{ text: string; name?: string; at: number }>> => ipcRenderer.invoke('history:get'),
   onReminder: (callback: (payload: ReminderPayload) => void): void => {
     ipcRenderer.on('notify:reminder', (_event, payload: ReminderPayload) => callback(payload))
   },

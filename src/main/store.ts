@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { Config, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
+import type { Config, DanmakuStyle, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
 
 export const MAX_REMINDERS = 20
 export const MAX_SCHEDULES = 20
@@ -22,6 +22,8 @@ export const DEFAULT_CONFIG: Config = {
   missedPolicy: 'fire',
   theme: 'sky',
   speed: 'normal',
+  danmaku: { opacity: 1, fontScale: 1, stroke: true },
+  festivalEnabled: true,
   audioMode: 'synth',
   audioFileName: ''
 }
@@ -131,8 +133,31 @@ export function normalizeSchedules(input: unknown): ScheduleItem[] {
   return items
 }
 
+/** 清洗弹幕外观 */
+export function normalizeDanmaku(input: unknown): DanmakuStyle {
+  const d = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
+  const clamp = (v: unknown, min: number, max: number, fallback: number): number => {
+    const n = Number(v)
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback
+  }
+  return {
+    opacity: clamp(d['opacity'], 0.3, 1, 1),
+    fontScale: clamp(d['fontScale'], 0.8, 1.6, 1),
+    stroke: d['stroke'] !== false
+  }
+}
+
 /** Profile 覆盖的字段（快照/应用都用这个范围） */
-export const PROFILE_FIELDS = ['reminders', 'schedules', 'quietEnabled', 'quietStart', 'quietEnd', 'theme', 'speed'] as const
+export const PROFILE_FIELDS = [
+  'reminders',
+  'schedules',
+  'quietEnabled',
+  'quietStart',
+  'quietEnd',
+  'theme',
+  'speed',
+  'danmaku'
+] as const
 
 export function normalizeProfiles(input: unknown): Profile[] {
   if (!Array.isArray(input)) return []
@@ -152,6 +177,7 @@ export function normalizeProfiles(input: unknown): Profile[] {
     if (typeof patchRaw['quietEnd'] === 'string') patch.quietEnd = normalizeTime(patchRaw['quietEnd'])
     if (patchRaw['theme'] === 'sky' || patchRaw['theme'] === 'candy' || patchRaw['theme'] === 'mono') patch.theme = patchRaw['theme']
     if (patchRaw['speed'] === 'slow' || patchRaw['speed'] === 'normal' || patchRaw['speed'] === 'fast') patch.speed = patchRaw['speed']
+    if (patchRaw['danmaku'] !== undefined) patch.danmaku = normalizeDanmaku(patchRaw['danmaku'])
     items.push({ id, name, patch })
   }
   return items
@@ -168,6 +194,8 @@ export function getConfig(): Config {
         reminders: normalizeReminders(stored.reminders ?? []),
         schedules: normalizeSchedules(stored.schedules ?? []),
         profiles: normalizeProfiles(stored.profiles ?? []),
+        danmaku: normalizeDanmaku(stored.danmaku),
+        festivalEnabled: stored.festivalEnabled !== false,
         activeProfile: typeof stored.activeProfile === 'string' ? stored.activeProfile : null
       }
     } catch (error) {
@@ -187,6 +215,8 @@ export function updateConfig(patch: Partial<Config>): Config {
   next.volume = Math.min(1, Math.max(0, next.volume))
   next.audioMode = next.audioMode === 'file' ? 'file' : 'synth'
   next.audioFileName = /^[\w.-]+$/.test(next.audioFileName ?? '') ? next.audioFileName : ''
+  next.danmaku = normalizeDanmaku(patch.danmaku !== undefined ? patch.danmaku : getConfig().danmaku)
+  next.festivalEnabled = next.festivalEnabled !== false
   cache = next
 
   const file = configFile()

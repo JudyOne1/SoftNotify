@@ -42,13 +42,16 @@ function randomItem(text: string, config: Config | null): DanmakuItem {
 export default function OverlayApp(): React.JSX.Element {
   const [items, setItems] = useState<DanmakuItem[]>([])
   const configRef = useRef<Config | null>(null)
+  const [style, setStyle] = useState({ opacity: 1, fontScale: 1, stroke: true })
 
   useEffect(() => {
     void window.notifyAPI.getConfig().then((c) => {
       configRef.current = c
+      if (c.danmaku) setStyle(c.danmaku)
     })
     window.notifyAPI.onConfigChanged((c) => {
       configRef.current = c
+      if (c.danmaku) setStyle(c.danmaku)
     })
     window.notifyAPI.onReminder((payload) => {
       setItems((prev) => [...prev, randomItem(payload.text, configRef.current)])
@@ -63,11 +66,12 @@ export default function OverlayApp(): React.JSX.Element {
       {items.map((item) => (
         <span
           key={item.id}
-          className="danmaku"
+          className={`danmaku${style.stroke ? '' : ' danmaku-nostroke'}`}
           style={{
             top: `${item.top}%`,
-            fontSize: `${item.fontSize}px`,
+            fontSize: `${item.fontSize * style.fontScale}px`,
             color: item.color,
+            opacity: style.opacity,
             animationDuration: `${item.duration}s`
           }}
           onAnimationEnd={() => remove(item.id)}

@@ -30,6 +30,10 @@ body,
   will-change: transform;
 }
 
+.danmaku-nostroke {
+  text-shadow: none;
+}
+
 @keyframes danmaku-move {
   from {
     transform: translateX(0);
