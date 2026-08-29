@@ -16,6 +16,11 @@ const api = {
     ipcRenderer.on('update:status', handler)
     return () => ipcRenderer.removeListener('update:status', handler)
   },
+  onUiNavigate: (callback: (section: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, section: string): void => callback(section)
+    ipcRenderer.on('ui:navigate', handler)
+    return () => ipcRenderer.removeListener('ui:navigate', handler)
+  },
   getHistory: (): Promise<Array<{ text: string; name?: string; at: number }>> => ipcRenderer.invoke('history:get'),
   getUiEnv: (): Promise<{ nativeMaterial: boolean }> => ipcRenderer.invoke('ui:env'),
   getDisplays: (): Promise<Array<{ index: number; primary: boolean; width: number; height: number }>> =>

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { Config, ScheduleItem } from '@shared/types'
 import { REMINDER_PRESETS } from '@shared/templates'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { newId } from './util'
-import './settings.css'
 
 /** 首次安装的预设套餐：挑一个直接开跑 */
 const BUNDLES: Array<{
@@ -66,9 +67,7 @@ const BUNDLES: Array<{
     title: '极简',
     desc: '只保留每小时喝一次水',
     build: () => ({
-      reminders: [
-        { id: newId(), name: '喝水', enabled: true, intervalMinutes: 60, texts: [] }
-      ],
+      reminders: [{ id: newId(), name: '喝水', enabled: true, intervalMinutes: 60, texts: [] }],
       schedules: [] as ScheduleItem[]
     })
   }
@@ -81,7 +80,6 @@ export default function WelcomeApp(): React.JSX.Element {
     const bundle = BUNDLES.find((b) => b.id === picked) ?? BUNDLES[0]
     await window.notifyAPI.setConfig(bundle.build())
     window.location.hash = '#/settings'
-    // hash 变了但 React 已挂载，直接重载到设置页
     window.location.reload()
   }
 
@@ -91,33 +89,34 @@ export default function WelcomeApp(): React.JSX.Element {
   }
 
   return (
-    <div className="settings-app">
-      <div className="settings welcome">
-        <h1>欢迎使用 Notify 👋</h1>
-        <p className="welcome-sub">
+    <div className="flex h-screen items-center justify-center overflow-auto bg-background text-foreground">
+      <div className="w-full max-w-[440px] px-8 py-10">
+        <h1 className="mb-3 text-xl font-bold">欢迎使用 Notify 👋</h1>
+        <p className="mb-5 text-[13px] leading-relaxed text-muted-foreground">
           到点后一段轻音效 + 弹幕从屏幕飘过，提醒你喝水、护眼、活动一下——不打断你的焦点。
           先挑一个预设开始，之后随时可以改。
         </p>
-        <div className="bundle-list">
+        <div className="mb-3 flex flex-col gap-2.5">
           {BUNDLES.map((b) => (
             <button
               key={b.id}
               type="button"
-              className={`bundle${picked === b.id ? ' bundle-on' : ''}`}
               onClick={() => setPicked(b.id)}
+              className={cn(
+                'flex cursor-pointer flex-col gap-1 rounded-lg bg-card p-3.5 text-left shadow-[var(--neu-raised)] transition-all',
+                picked === b.id ? 'ring-1 ring-primary' : 'hover:brightness-110'
+              )}
             >
-              <span className="bundle-title">{b.title}</span>
-              <span className="bundle-desc">{b.desc}</span>
+              <span className="text-sm font-semibold">{b.title}</span>
+              <span className="text-xs text-muted-foreground">{b.desc}</span>
             </button>
           ))}
         </div>
-        <div className="row actions">
-          <button type="button" onClick={() => void start()}>
-            开始使用
-          </button>
-          <button type="button" className="ghost" onClick={skip}>
+        <div className="flex gap-3 pt-2">
+          <Button onClick={() => void start()}>开始使用</Button>
+          <Button variant="ghost" onClick={skip}>
             跳过，自己配置
-          </button>
+          </Button>
         </div>
       </div>
     </div>

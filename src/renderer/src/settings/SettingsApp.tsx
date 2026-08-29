@@ -3,6 +3,9 @@ import type { Config, SoundPreset, UpdateStatus } from '@shared/types'
 import RemindersSection from './RemindersSection'
 import SchedulesSection from './SchedulesSection'
 import ProfilesSection from './ProfilesSection'
+import StatsSection from './StatsSection'
+import HistorySection from './HistorySection'
+import ZonePicker from './ZonePicker'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
@@ -27,6 +30,8 @@ const SECTIONS = [
   { key: 'sound', icon: '🔔', label: '声音' },
   { key: 'quiet', icon: '🌙', label: '免打扰' },
   { key: 'danmaku', icon: '💬', label: '弹幕' },
+  { key: 'stats', icon: '📊', label: '统计' },
+  { key: 'history', icon: '🕘', label: '历史' },
   { key: 'about', icon: '⭐', label: '关于' }
 ] as const
 
@@ -75,10 +80,16 @@ export default function SettingsApp(): React.JSX.Element {
     void window.notifyAPI.getAppVersion().then(setAppVersion)
     void window.notifyAPI.getDisplays().then(setDisplays)
     const offUpdate = window.notifyAPI.onUpdateStatus(setUpdateStatus)
+    const offNavigate = window.notifyAPI.onUiNavigate((section) => {
+      if (SECTIONS.some((s) => s.key === section)) setActive(section as SectionKey)
+    })
     void window.notifyAPI.getUiEnv().then((env) => {
       if (env.nativeMaterial) document.body.classList.add('native-material')
     })
-    return () => offUpdate()
+    return () => {
+      offUpdate()
+      offNavigate()
+    }
   }, [])
 
   /** 主题应用：跟随系统（matchMedia）或手动指定 */
@@ -416,29 +427,12 @@ export default function SettingsApp(): React.JSX.Element {
                   </Select>
                 </Row>
                 {config.danmakuZone === 'custom' && (
-                  <div className="border-b border-border/50 pb-3">
-                    <div className="mb-1 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="w-12">开始</span>
-                      <span className="tabular-nums">{config.zoneStart}%</span>
-                      <span className="ml-6 w-12">结束</span>
-                      <span className="tabular-nums">{config.zoneEnd}%</span>
-                    </div>
-                    <div className="flex flex-col gap-2 py-1">
-                      <Slider
-                        value={[config.zoneStart]}
-                        min={0}
-                        max={80}
-                        step={5}
-                        onValueChange={([v]) => void patch({ zoneStart: Math.min(v, config.zoneEnd - 10) })}
-                      />
-                      <Slider
-                        value={[config.zoneEnd]}
-                        min={20}
-                        max={100}
-                        step={5}
-                        onValueChange={([v]) => void patch({ zoneEnd: Math.max(v, config.zoneStart + 10) })}
-                      />
-                    </div>
+                  <div className="border-b border-border/50 pb-4 pt-1">
+                    <ZonePicker
+                      start={config.zoneStart}
+                      end={config.zoneEnd}
+                      onChange={(s, e) => void patch({ zoneStart: s, zoneEnd: e })}
+                    />
                   </div>
                 )}
                 <Row label="不透明度">
@@ -486,6 +480,20 @@ export default function SettingsApp(): React.JSX.Element {
                   onCheckedChange={(v) => void patch({ highPriorityNotify: v })}
                 />
               </Row>
+            </>
+          )}
+
+          {active === 'stats' && (
+            <>
+              <SectionTitle title="统计" hint="打卡与活跃时长，仅保存在本机" />
+              <StatsSection />
+            </>
+          )}
+
+          {active === 'history' && (
+            <>
+              <SectionTitle title="历史" hint="最近 50 条弹幕，仅保存在本机" />
+              <HistorySection />
             </>
           )}
 

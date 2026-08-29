@@ -55,6 +55,19 @@ export function openSettings(route = '/settings'): void {
   })
 }
 
+/** 打开设置窗口并切到指定分区（统计/历史等），供托盘快捷入口使用 */
+export function openSettingsTo(section: string): void {
+  if (win && !win.isDestroyed()) {
+    win.focus()
+    win.webContents.send('ui:navigate', section)
+    return
+  }
+  openSettings('/settings')
+  win?.webContents.once('did-finish-load', () => {
+    win?.webContents.send('ui:navigate', section)
+  })
+}
+
 /** 向设置窗口推送事件（如更新状态）；窗口未开则忽略 */
 export function broadcastToSettings(channel: string, payload: unknown): void {
   if (win && !win.isDestroyed()) {

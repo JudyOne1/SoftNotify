@@ -5,7 +5,7 @@ import { inQuietHours } from '@shared/quiet'
 import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig, wasConfigCorrupted } from './store'
 import { Scheduler } from './scheduler'
 import { createOverlays, registerDisplayEvents, sendReminder, setOverlayUiRects, sortedDisplays, startHoverPolling } from './overlay'
-import { openSettings, usesNativeMaterial } from './settings-window'
+import { openSettings, openSettingsTo, usesNativeMaterial } from './settings-window'
 import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
 import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './audio'
@@ -13,8 +13,6 @@ import { initAutoUpdater, registerUpdateIpc } from './updater'
 import { isManualMeeting, isMeeting, setManualMeeting, startMeetingPolling } from './meeting'
 import { festivalGreeting } from './festivals'
 import { addHistory, getHistory } from './history'
-import { openHistory } from './history-window'
-import { openStats } from './stats-window'
 import { addCheckin, getStats, startUsageTracking, todayCountFor } from './stats'
 import { writeFile } from 'node:fs/promises'
 
@@ -172,8 +170,8 @@ const handlers: TrayHandlers = {
     refreshTray(handlers, scheduler)
   },
   onOpenSettings: () => openSettings(),
-  onOpenHistory: () => openHistory(),
-  onOpenStats: () => openStats()
+  onOpenHistory: () => openSettingsTo('history'),
+  onOpenStats: () => openSettingsTo('stats')
 }
 
 // 自定义媒体协议必须在 app ready 前注册
