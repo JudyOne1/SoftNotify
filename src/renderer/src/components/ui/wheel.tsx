@@ -33,7 +33,8 @@ export function Wheel({ value, min, max, step = 1, onChange, label, className }:
 
   return (
     <div className={cn('flex flex-col items-center gap-0.5', className)}>
-      <WheelPickerWrapper className="h-64 w-full rounded-md shadow-[var(--neu-inset-sm)]">
+      {/* 拟物凹槽窗口：高度为轮盘的 1/3，居中裁切（透过窗口看轮盘正中的选中值） */}
+      <WheelPickerWrapper className="h-[85px] w-full items-center rounded-md shadow-[var(--neu-inset-sm)]">
         <WheelPicker
           options={options}
           value={value}
