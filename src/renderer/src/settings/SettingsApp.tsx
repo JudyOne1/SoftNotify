@@ -59,14 +59,17 @@ export default function SettingsApp(): React.JSX.Element {
   const [appVersion, setAppVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [active, setActive] = useState<SectionKey>('reminders')
+  const [displays, setDisplays] = useState<Array<{ index: number; primary: boolean; width: number; height: number }> | null>(null)
 
   useEffect(() => {
     void window.notifyAPI.getConfig().then(setConfig)
     void window.notifyAPI.getAppVersion().then(setAppVersion)
-    window.notifyAPI.onUpdateStatus(setUpdateStatus)
+    void window.notifyAPI.getDisplays().then(setDisplays)
+    const offUpdate = window.notifyAPI.onUpdateStatus(setUpdateStatus)
     void window.notifyAPI.getUiEnv().then((env) => {
       if (env.nativeMaterial) document.body.classList.add('native-material')
     })
+    return () => offUpdate()
   }, [])
 
   /** 主题应用：跟随系统（matchMedia）或手动指定 */
@@ -275,44 +278,133 @@ export default function SettingsApp(): React.JSX.Element {
             </>
           )}
 
-          {active === 'danmaku' && (
-            <>
-              <SectionTitle title="弹幕" />
-              <Row label="颜色主题">
-                <Select value={config.theme} onValueChange={(v) => void patch({ theme: v as Config['theme'] })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sky">天空（多彩）</SelectItem>
-                    <SelectItem value="candy">糖果（粉紫）</SelectItem>
-                    <SelectItem value="mono">素雅（灰白）</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Row>
-              <Row label="飘过速度">
-                <Select value={config.speed} onValueChange={(v) => void patch({ speed: v as Config['speed'] })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="slow">慢速</SelectItem>
-                    <SelectItem value="normal">正常</SelectItem>
-                    <SelectItem value="fast">快速</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Row>
-              <Row label="不透明度">
-                <div className="w-44">
-                  <Slider
-                    value={[d.opacity]}
-                    min={0.3}
-                    max={1}
-                    step={0.05}
-                    onValueChange={([v]) => void patch({ danmaku: { ...d, opacity: v } })}
-                  />
-                </div>
-              </Row>
+            {active === 'danmaku' && (
+              <>
+                <SectionTitle title="弹幕" />
+                <Row label="颜色主题">
+                  <Select value={config.theme} onValueChange={(v) => void patch({ theme: v as Config['theme'] })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sky">天空（多彩）</SelectItem>
+                      <SelectItem value="candy">糖果（粉紫）</SelectItem>
+                      <SelectItem value="mono">素雅（灰白）</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Row>
+                <Row label="飘过速度">
+                  <Select value={config.speed} onValueChange={(v) => void patch({ speed: v as Config['speed'] })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="slow">慢速</SelectItem>
+                      <SelectItem value="normal">正常</SelectItem>
+                      <SelectItem value="fast">快速</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Row>
+                <Row label="输出屏幕">
+                  <Select
+                    value={config.displayMode}
+                    onValueChange={(v) => void patch({ displayMode: v as Config['displayMode'] })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部屏幕</SelectItem>
+                      <SelectItem value="primary">仅主屏</SelectItem>
+                      <SelectItem value="custom">自定义</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Row>
+                {config.displayMode === 'custom' && (
+                  <div className="flex flex-wrap gap-2 border-b border-border/50 pb-3">
+                    {(displays ?? []).map((d) => {
+                      const on = config.customDisplays.includes(d.index)
+                      return (
+                        <button
+                          key={d.index}
+                          type="button"
+                          onClick={() =>
+                            void patch({
+                              customDisplays: on
+                                ? config.customDisplays.filter((i) => i !== d.index)
+                                : [...config.customDisplays, d.index]
+                            })
+                          }
+                          className={cn(
+                            'cursor-pointer rounded-md px-3 py-1.5 text-xs transition-all',
+                            on
+                              ? 'bg-primary/20 text-primary shadow-[var(--neu-inset-sm)]'
+                              : 'bg-card text-muted-foreground shadow-[var(--neu-raised-sm)] hover:text-foreground'
+                          )}
+                        >
+                          显示器 {d.index + 1}
+                          {d.primary ? ' · 主屏' : ''} {d.width}×{d.height}
+                        </button>
+                      )
+                    })}
+                    {displays && displays.length === 0 && (
+                      <span className="text-xs text-muted-foreground">未检测到显示器</span>
+                    )}
+                  </div>
+                )}
+                <Row label="显示区域">
+                  <Select
+                    value={config.danmakuZone}
+                    onValueChange={(v) => void patch({ danmakuZone: v as Config['danmakuZone'] })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full">全屏</SelectItem>
+                      <SelectItem value="top-half">上半屏</SelectItem>
+                      <SelectItem value="top-30">顶部 30%</SelectItem>
+                      <SelectItem value="custom">自定义</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Row>
+                {config.danmakuZone === 'custom' && (
+                  <div className="border-b border-border/50 pb-3">
+                    <div className="mb-1 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="w-12">开始</span>
+                      <span className="tabular-nums">{config.zoneStart}%</span>
+                      <span className="ml-6 w-12">结束</span>
+                      <span className="tabular-nums">{config.zoneEnd}%</span>
+                    </div>
+                    <div className="flex flex-col gap-2 py-1">
+                      <Slider
+                        value={[config.zoneStart]}
+                        min={0}
+                        max={80}
+                        step={5}
+                        onValueChange={([v]) => void patch({ zoneStart: Math.min(v, config.zoneEnd - 10) })}
+                      />
+                      <Slider
+                        value={[config.zoneEnd]}
+                        min={20}
+                        max={100}
+                        step={5}
+                        onValueChange={([v]) => void patch({ zoneEnd: Math.max(v, config.zoneStart + 10) })}
+                      />
+                    </div>
+                  </div>
+                )}
+                <Row label="不透明度">
+                  <div className="w-44">
+                    <Slider
+                      value={[d.opacity]}
+                      min={0.3}
+                      max={1}
+                      step={0.05}
+                      onValueChange={([v]) => void patch({ danmaku: { ...d, opacity: v } })}
+                    />
+                  </div>
+                </Row>
               <Row label="字号缩放">
                 <div className="w-44">
                   <Slider

@@ -103,6 +103,16 @@ export interface Config {
   highPriorityNotify: boolean
   /** 弹幕悬停交互：鼠标移入弹幕暂停并浮出打卡按钮 */
   hoverInteraction: boolean
+  /** 弹幕输出屏幕：全部 / 仅主屏 / 自定义 */
+  displayMode: 'all' | 'primary' | 'custom'
+  /** 自定义输出屏幕（按屏幕 x 坐标从左到右的序号，从 0 开始） */
+  customDisplays: number[]
+  /** 弹幕显示区域：全屏 / 上半屏 / 顶部 30% / 自定义 */
+  danmakuZone: 'full' | 'top-half' | 'top-30' | 'custom'
+  /** 自定义区域起始（垂直百分比 0-80） */
+  zoneStart: number
+  /** 自定义区域结束（垂直百分比 20-100） */
+  zoneEnd: number
   /** 界面主题：跟随系统 / 亮色 / 暗色 */
   themeMode: 'system' | 'light' | 'dark'
   /** 设置窗口尺寸记忆 */

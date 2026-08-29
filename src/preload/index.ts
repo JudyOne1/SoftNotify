@@ -11,21 +11,29 @@ const api = {
   getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open:external', url),
   checkUpdate: (): Promise<{ status: UpdateStatus; version?: string }> => ipcRenderer.invoke('update:check'),
-  onUpdateStatus: (callback: (status: UpdateStatus) => void): void => {
-    ipcRenderer.on('update:status', (_event, status: UpdateStatus) => callback(status))
+  onUpdateStatus: (callback: (status: UpdateStatus) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void => callback(status)
+    ipcRenderer.on('update:status', handler)
+    return () => ipcRenderer.removeListener('update:status', handler)
   },
   getHistory: (): Promise<Array<{ text: string; name?: string; at: number }>> => ipcRenderer.invoke('history:get'),
   getUiEnv: (): Promise<{ nativeMaterial: boolean }> => ipcRenderer.invoke('ui:env'),
+  getDisplays: (): Promise<Array<{ index: number; primary: boolean; width: number; height: number }>> =>
+    ipcRenderer.invoke('displays:list'),
   setOverlayUiRects: (rects: Array<{ x: number; y: number; w: number; h: number }>): void =>
     ipcRenderer.send('overlay:set-ui-rects', rects),
   checkin: (itemId: string): Promise<void> => ipcRenderer.invoke('checkin', itemId),
   getStats: (): Promise<StatsSummary> => ipcRenderer.invoke('stats:get'),
   exportStats: (): Promise<{ canceled: boolean }> => ipcRenderer.invoke('stats:export'),
-  onReminder: (callback: (payload: ReminderPayload) => void): void => {
-    ipcRenderer.on('notify:reminder', (_event, payload: ReminderPayload) => callback(payload))
+  onReminder: (callback: (payload: ReminderPayload) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: ReminderPayload): void => callback(payload)
+    ipcRenderer.on('notify:reminder', handler)
+    return () => ipcRenderer.removeListener('notify:reminder', handler)
   },
-  onConfigChanged: (callback: (config: Config) => void): void => {
-    ipcRenderer.on('config:changed', (_event, config: Config) => callback(config))
+  onConfigChanged: (callback: (config: Config) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, config: Config): void => callback(config)
+    ipcRenderer.on('config:changed', handler)
+    return () => ipcRenderer.removeListener('config:changed', handler)
   }
 }
 

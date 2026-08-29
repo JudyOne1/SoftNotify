@@ -26,10 +26,26 @@ const SPEEDS: Record<Config['speed'], [min: number, max: number]> = {
   fast: [5, 9]
 }
 
-/** 屏幕纵向车道数：多条弹幕同时出现时避免重叠 */
-const LANE_COUNT = 6
+/** 屏幕纵向车道数：多条弹幕同时出现时避免重叠；窄区域自动减车道 */
+const MAX_LANES = 6
 
 let nextId = 0
+
+/** 由配置解析弹幕显示区域（垂直百分比）与车道数 */
+function resolveZone(config: Config | null): { start: number; end: number; laneCount: number } {
+  const zone = config?.danmakuZone ?? 'full'
+  let start = 0
+  let end = 100
+  if (zone === 'top-half') end = 50
+  else if (zone === 'top-30') end = 30
+  else if (zone === 'custom') {
+    start = config?.zoneStart ?? 0
+    end = config?.zoneEnd ?? 30
+  }
+  const band = end - start
+  const laneCount = band < 25 ? 3 : band < 45 ? 4 : MAX_LANES
+  return { start, end, laneCount }
+}
 
 function randomItem(
   text: string,
@@ -44,9 +60,10 @@ function randomItem(
   const base = min + Math.random() * (max - min)
   const factor = (0.8 + text.length / 40) * (priority === 'high' ? 1.5 : 1)
   const duration = Math.min(max * 1.8, Math.max(min * 0.8, base * factor))
-  // 车道内随机小偏移，避免同车道也完全同高
-  const laneHeight = 100 / LANE_COUNT
-  const top = lane * laneHeight + laneHeight * (0.2 + Math.random() * 0.6)
+  // 在显示区域内按车道分布，车道内随机小偏移
+  const { start, end, laneCount } = resolveZone(config)
+  const laneHeight = (end - start) / laneCount
+  const top = start + lane * laneHeight + laneHeight * (0.2 + Math.random() * 0.6)
   return {
     id: nextId++,
     text,
@@ -66,8 +83,8 @@ export default function OverlayApp(): React.JSX.Element {
   const [hoverEnabled, setHoverEnabled] = useState(true)
   /** 各弹幕交互区元素引用，用于向主进程上报可点击区域 */
   const wrapperRefs = useRef(new Map<number, HTMLElement>())
-  /** 各车道当前占用数 */
-  const lanes = useRef<number[]>(new Array(LANE_COUNT).fill(0))
+  /** 各车道当前占用数（固定 MAX_LANES 长度，实际使用前 zone.laneCount 个） */
+  const lanes = useRef<number[]>(new Array(MAX_LANES).fill(0))
 
   useEffect(() => {
     void window.notifyAPI.getConfig().then((c) => {
@@ -75,19 +92,32 @@ export default function OverlayApp(): React.JSX.Element {
       if (c.danmaku) setStyle(c.danmaku)
       setHoverEnabled(c.hoverInteraction !== false)
     })
-    window.notifyAPI.onConfigChanged((c) => {
+    const offConfig = window.notifyAPI.onConfigChanged((c) => {
       configRef.current = c
       if (c.danmaku) setStyle(c.danmaku)
       setHoverEnabled(c.hoverInteraction !== false)
     })
-    window.notifyAPI.onReminder((payload) => {
-      // 选最空的车道；全满则随机
-      let lane = lanes.current.indexOf(Math.min(...lanes.current))
-      if (lanes.current[lane] > 2) lane = Math.floor(Math.random() * LANE_COUNT)
+    const offReminder = window.notifyAPI.onReminder((payload) => {
+      // 选最空的车道；全满则随机（车道数随显示区域收窄而减少）
+      const laneCount = resolveZone(configRef.current).laneCount
+      let lane = 0
+      let min = Number.MAX_SAFE_INTEGER
+      for (let i = 0; i < laneCount; i++) {
+        if (lanes.current[i] < min) {
+          min = lanes.current[i]
+          lane = i
+        }
+      }
+      if (lanes.current[lane] > 2) lane = Math.floor(Math.random() * laneCount)
       lanes.current[lane]++
       setItems((prev) => [...prev, randomItem(payload.text, payload.itemId, payload.priority, configRef.current, lane)])
       if (payload.sound) playReminderSound(payload.volume, payload.audioUrl)
     })
+    // 必须退订：HMR/重挂载时监听叠加会导致一次提醒出多条弹幕
+    return () => {
+      offReminder()
+      offConfig()
+    }
   }, [])
 
   /**

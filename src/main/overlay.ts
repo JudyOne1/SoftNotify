@@ -1,5 +1,6 @@
 import { BrowserWindow, screen, type Display } from 'electron'
-import type { ReminderPayload } from '@shared/types'
+import type { Config, ReminderPayload } from '@shared/types'
+import { getConfig } from './store'
 import { preloadPath, rendererUrl } from './paths'
 
 const windows = new Map<number, BrowserWindow>()
@@ -124,7 +125,28 @@ export function registerDisplayEvents(): void {
   screen.on('display-metrics-changed', refresh)
 }
 
-/** 向所有屏幕广播弹幕；提示音只由主屏窗口播放，避免重复发声 */
+/** 显示器按屏幕 x 坐标从左到右排序的序号 → Display */
+export function sortedDisplays(): Display[] {
+  return [...screen.getAllDisplays()].sort((a, b) => a.workArea.x - b.workArea.x)
+}
+
+/** 按配置解析本次弹幕应投递的显示器集合 */
+function targetIds(cfg: Config): Set<number> | null {
+  if (cfg.displayMode === 'primary') return new Set([screen.getPrimaryDisplay().id])
+  if (cfg.displayMode === 'custom') {
+    const sorted = sortedDisplays()
+    const ids = new Set<number>()
+    for (const idx of cfg.customDisplays) {
+      const d = sorted[idx]
+      if (d) ids.add(d.id)
+    }
+    // 配置的序号全部失配（显示器变动）→ 回退全部
+    return ids.size > 0 ? ids : null
+  }
+  return null
+}
+
+/** 向屏幕广播弹幕；提示音只由主屏窗口播放，避免重复发声。投递范围按 displayMode 过滤 */
 export function sendReminder(
   text: string,
   soundEnabled: boolean,
@@ -133,8 +155,10 @@ export function sendReminder(
   itemId?: string,
   priority?: 'high'
 ): void {
+  const cfgTargets = targetIds(getConfig())
   for (const [id, win] of windows) {
     if (win.isDestroyed()) continue
+    if (cfgTargets && !cfgTargets.has(id)) continue
     const payload: ReminderPayload = {
       text,
       sound: soundEnabled && id === primaryId,

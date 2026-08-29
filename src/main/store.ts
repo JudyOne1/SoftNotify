@@ -26,6 +26,11 @@ export const DEFAULT_CONFIG: Config = {
   festivalEnabled: true,
   highPriorityNotify: false,
   hoverInteraction: true,
+  displayMode: 'all',
+  customDisplays: [],
+  danmakuZone: 'full',
+  zoneStart: 0,
+  zoneEnd: 30,
   themeMode: 'system',
   audioMode: 'synth',
   audioFileName: ''
@@ -59,6 +64,14 @@ function clampInterval(value: unknown): number {
 function normalizeTime(value: unknown): string {
   if (typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return value
   return '09:00'
+}
+
+/** 弹幕区域边界清洗：start 0-80、end 20-100，且 start ≤ end-10 */
+function clampZone(value: unknown, fallback: number): number {
+  const n = Math.round(Number(value))
+  const v = Number.isFinite(n) ? n : fallback
+  if (fallback === 0) return Math.min(80, Math.max(0, v))
+  return Math.min(100, Math.max(20, v))
 }
 
 /** 校验 YYYY-MM-DD，非法返回 undefined */
@@ -227,6 +240,17 @@ export function getConfig(): Config {
         festivalEnabled: stored.festivalEnabled !== false,
         highPriorityNotify: stored.highPriorityNotify === true,
         hoverInteraction: stored.hoverInteraction !== false,
+        displayMode: ['all', 'primary', 'custom'].includes(stored.displayMode as string)
+          ? (stored.displayMode as Config['displayMode'])
+          : 'all',
+        customDisplays: Array.isArray(stored.customDisplays)
+          ? [...new Set(stored.customDisplays.filter((d): d is number => Number.isInteger(d) && d >= 0))].slice(0, 8)
+          : [],
+        danmakuZone: ['full', 'top-half', 'top-30', 'custom'].includes(stored.danmakuZone as string)
+          ? (stored.danmakuZone as Config['danmakuZone'])
+          : 'full',
+        zoneStart: clampZone(stored.zoneStart, 0),
+        zoneEnd: clampZone(stored.zoneEnd, 30),
         themeMode: stored.themeMode === 'light' || stored.themeMode === 'dark' ? stored.themeMode : 'system',
         settingsWindow: normalizeBounds(stored.settingsWindow),
         activeProfile: typeof stored.activeProfile === 'string' ? stored.activeProfile : null
@@ -262,6 +286,17 @@ export function updateConfig(patch: Partial<Config>): Config {
   next.festivalEnabled = next.festivalEnabled !== false
   next.highPriorityNotify = next.highPriorityNotify === true
   next.hoverInteraction = next.hoverInteraction !== false
+  next.displayMode = ['all', 'primary', 'custom'].includes(next.displayMode as string)
+    ? next.displayMode
+    : 'all'
+  next.customDisplays = Array.isArray(next.customDisplays)
+    ? [...new Set(next.customDisplays.filter((d) => Number.isInteger(d) && d >= 0))].slice(0, 8)
+    : []
+  next.danmakuZone = ['full', 'top-half', 'top-30', 'custom'].includes(next.danmakuZone as string)
+    ? next.danmakuZone
+    : 'full'
+  next.zoneStart = clampZone(next.zoneStart, 0)
+  next.zoneEnd = clampZone(next.zoneEnd, 30)
   next.themeMode = next.themeMode === 'light' || next.themeMode === 'dark' ? next.themeMode : 'system'
   if (patch.settingsWindow !== undefined) {
     next.settingsWindow = normalizeBounds(patch.settingsWindow)

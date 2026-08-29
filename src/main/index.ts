@@ -1,10 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Notification, screen, shell } from 'electron'
 import type { Config, Profile, ProfilePatch, ReminderItem, ScheduleItem } from '@shared/types'
 import { pickText } from '@shared/templates'
 import { inQuietHours } from '@shared/quiet'
 import { PROFILE_FIELDS, getConfig, isFreshConfig, updateConfig, wasConfigCorrupted } from './store'
 import { Scheduler } from './scheduler'
-import { createOverlays, registerDisplayEvents, sendReminder, setOverlayUiRects, startHoverPolling } from './overlay'
+import { createOverlays, registerDisplayEvents, sendReminder, setOverlayUiRects, sortedDisplays, startHoverPolling } from './overlay'
 import { openSettings, usesNativeMaterial } from './settings-window'
 import { createTray, refreshTray, type TrayHandlers } from './tray'
 import { applyAutostart } from './autostart'
@@ -235,6 +235,15 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('app:version', () => app.getVersion())
     ipcMain.handle('history:get', () => getHistory())
     ipcMain.handle('ui:env', () => ({ nativeMaterial: usesNativeMaterial() }))
+    ipcMain.handle('displays:list', () => {
+      const primary = screen.getPrimaryDisplay().id
+      return sortedDisplays().map((d, index) => ({
+        index,
+        primary: d.id === primary,
+        width: d.size.width,
+        height: d.size.height
+      }))
+    })
     ipcMain.on('overlay:set-ui-rects', (event, rects: Array<{ x: number; y: number; w: number; h: number }>) => {
       const win = BrowserWindow.fromWebContents(event.sender)
       if (win && Array.isArray(rects)) setOverlayUiRects(win, rects)
