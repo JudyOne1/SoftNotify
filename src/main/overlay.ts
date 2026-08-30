@@ -42,9 +42,7 @@ function createOverlayFor(display: Display): void {
       preload: preloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
-      // 多块显示器的弹幕窗口跑相同代码，共享一个渲染进程省内存（崩了会随显示器事件自动重建）
-      affinity: 'notify-overlay'
+      sandbox: false
     }
   })
 
