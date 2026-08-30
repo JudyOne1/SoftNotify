@@ -151,6 +151,10 @@ export function addFocusSession(): void {
   save()
 }
 
+export function todayFocusCount(): number {
+  return load().focusSessions[todayStr()] ?? 0
+}
+
 /** 活跃时长采集：每分钟检查一次，1 分钟内有过输入则计 1 分钟 */
 export function startUsageTracking(): void {
   if (usageTimer) return

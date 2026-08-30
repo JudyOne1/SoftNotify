@@ -26,6 +26,10 @@ const api = {
   },
   getHistory: (): Promise<Array<{ text: string; name?: string; at: number }>> => ipcRenderer.invoke('history:get'),
   getUiEnv: (): Promise<{ nativeMaterial: boolean }> => ipcRenderer.invoke('ui:env'),
+  startFocus: (minutes: number): Promise<void> => ipcRenderer.invoke('pomodoro:start', minutes),
+  stopPomodoro: (): Promise<void> => ipcRenderer.invoke('pomodoro:stop'),
+  getPomodoroState: (): Promise<{ active: boolean; phase: 'focus' | 'break' | null; remainingMs: number; todayFocus: number }> =>
+    ipcRenderer.invoke('pomodoro:state'),
   getDisplays: (): Promise<Array<{ index: number; primary: boolean; width: number; height: number }>> =>
     ipcRenderer.invoke('displays:list'),
   setOverlayUiRects: (rects: Array<{ x: number; y: number; w: number; h: number }>): void =>

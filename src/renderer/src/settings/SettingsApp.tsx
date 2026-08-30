@@ -5,6 +5,7 @@ import SchedulesSection from './SchedulesSection'
 import ProfilesSection from './ProfilesSection'
 import StatsSection from './StatsSection'
 import HistorySection from './HistorySection'
+import FocusSection from './FocusSection'
 import ZonePicker from './ZonePicker'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -29,6 +30,7 @@ const SECTIONS = [
   { key: 'profiles', icon: '🎛️', label: '模式' },
   { key: 'sound', icon: '🔔', label: '声音' },
   { key: 'quiet', icon: '🌙', label: '免打扰' },
+  { key: 'focus', icon: '🍅', label: '专注' },
   { key: 'danmaku', icon: '💬', label: '弹幕' },
   { key: 'stats', icon: '📊', label: '统计' },
   { key: 'history', icon: '🕘', label: '历史' },
@@ -349,7 +351,14 @@ export default function SettingsApp(): React.JSX.Element {
             </>
           )}
 
-            {active === 'danmaku' && (
+            {active === 'focus' && (
+            <>
+              <SectionTitle title="专注" hint="番茄钟：专注一段时间后提醒你休息，期间其他提醒自动静默" />
+              <FocusSection config={config} onPatch={(p) => void patch(p)} />
+            </>
+          )}
+
+          {active === 'danmaku' && (
               <>
                 <SectionTitle title="弹幕" />
                 <Row label="颜色主题">

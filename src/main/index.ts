@@ -13,11 +13,11 @@ import { handleMediaProtocol, registerAudioIpc, registerMediaScheme } from './au
 import { initAutoUpdater, registerUpdateIpc } from './updater'
 import { isManualMeeting, isMeeting, setManualMeeting, startMeetingPolling } from './meeting'
 import { isFullscreenApp, startFullscreenPolling } from './fullscreen'
-import { initPomodoro, isPomodoroSuppressing, startFocus, stopPomodoro, updatePomodoroConfig } from './pomodoro'
+import { currentPhase, initPomodoro, isPomodoroActive, isPomodoroSuppressing, remainingMs, startFocus, stopPomodoro, updatePomodoroConfig } from './pomodoro'
 import { addFocusSession } from './stats'
 import { festivalGreeting } from './festivals'
 import { addHistory, getHistory } from './history'
-import { addCheckin, getStats, isCelebrated, itemDailyCounts, markCelebrated, startUsageTracking, todayCountFor } from './stats'
+import { addCheckin, getStats, isCelebrated, itemDailyCounts, markCelebrated, startUsageTracking, todayCountFor, todayFocusCount } from './stats'
 import { computeStreak, STREAK_MILESTONES } from '@shared/streak-core'
 import { registerSnoozeFire, resetSnooze, snoozeItem } from './snooze'
 import { writeFile } from 'node:fs/promises'
@@ -317,6 +317,22 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('app:version', () => app.getVersion())
     ipcMain.handle('history:get', () => getHistory())
     ipcMain.handle('ui:env', () => ({ nativeMaterial: usesNativeMaterial() }))
+    ipcMain.handle('pomodoro:start', (_event, minutes: number) => {
+      startFocus(Math.min(180, Math.max(1, Math.round(Number(minutes)) || 25)))
+      refreshTray(handlers, scheduler)
+    })
+    ipcMain.handle('pomodoro:stop', () => {
+      stopPomodoro()
+      refreshTray(handlers, scheduler)
+    })
+    ipcMain.handle('pomodoro:state', () => {
+      return {
+        active: isPomodoroActive(),
+        phase: currentPhase(),
+        remainingMs: remainingMs(),
+        todayFocus: todayFocusCount()
+      }
+    })
     ipcMain.handle('displays:list', () => {
       const primary = screen.getPrimaryDisplay().id
       return sortedDisplays().map((d, index) => ({
