@@ -74,5 +74,5 @@ jobs:
           releaseDraft: false
           prerelease: false
           retryAttempts: 2
-          releaseAssetNamePattern: SoftNotify_[version]_[platform]_[arch].[ext]
+          releaseAssetNamePattern: SoftNotify_[version]_[platform]_[arch][setup].[ext]
           args: ${{ matrix.args }}
