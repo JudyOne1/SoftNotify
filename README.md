@@ -10,6 +10,19 @@
   [![GitHub stars](https://img.shields.io/github/stars/JudyOne1/SoftNotify?style=flat-square)](https://github.com/JudyOne1/SoftNotify/stargazers)
 </div>
 
+## 下载
+
+前往 [GitHub Releases](https://github.com/JudyOne1/SoftNotify/releases/latest) 获取最新版本。
+
+| 平台 | 安装包 | 状态 |
+| --- | --- | --- |
+| Windows x64 | MSI 安装版、便携版 EXE | 已验证 |
+| macOS Apple Silicon | DMG | 实验性支持，未签名 |
+| macOS Intel | DMG | 实验性支持，未签名 |
+| Linux x64 | AppImage、DEB | 实验性支持 |
+
+macOS 与 Linux 版本由 GitHub Actions 在对应原生系统上构建。Windows 专属的会议自动检测、全屏检测与空闲统计在其他平台上会自动降级，不影响基础提醒、日程、弹幕、专注模式与托盘功能。
+
 ## 为什么是 SoftNotify
 
 传统弹窗会抢焦点，系统通知又很容易被错过。SoftNotify 使用不会抢占输入焦点的桌面弹幕，让喝水、护眼、活动、日程与专注结束提醒自然经过屏幕，同时保留完成、稍后提醒和忽略等必要操作。
