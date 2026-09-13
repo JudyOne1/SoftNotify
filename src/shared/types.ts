@@ -92,6 +92,8 @@ export interface Config {
   volume: number
   /** 开机自启 */
   autostart: boolean
+  /** 是否由用户明确确认过开机自启，仅用于兼容迁移 */
+  autostartConfirmed?: boolean
   /** 暂停提醒 */
   paused: boolean
   /** 临时暂停截止时间（Unix 毫秒），到期自动恢复 */

@@ -16,12 +16,14 @@
 
 | 平台 | 安装包 | 状态 |
 | --- | --- | --- |
-| Windows x64 | MSI 安装版、便携版 EXE | 已验证 |
+| Windows x64 | NSIS 引导式安装程序 | 已验证 |
 | macOS Apple Silicon | DMG | 实验性支持，未签名 |
 | macOS Intel | DMG | 实验性支持，未签名 |
 | Linux x64 | AppImage、DEB | 实验性支持 |
 
 macOS 与 Linux 版本由 GitHub Actions 在对应原生系统上构建。Windows 专属的会议自动检测、全屏检测与空闲统计在其他平台上会自动降级，不影响基础提醒、日程、弹幕、专注模式与托盘功能。
+
+为降低安全软件的行为误报，SoftNotify 不再发布直接从下载目录运行的 Windows 便携版。开机自启默认关闭，只有用户在设置中明确开启后才会注册系统启动项。
 
 ## 为什么是 SoftNotify
 
@@ -111,7 +113,7 @@ npm run tauri build
 
 ## 项目状态
 
-SoftNotify 正在持续完善中，当前版本为 `0.7.0`。欢迎通过 [Issues](https://github.com/JudyOne1/SoftNotify/issues) 报告问题、提出交互建议或分享使用场景。
+SoftNotify 正在持续完善中，当前版本为 `0.7.1`。欢迎通过 [Issues](https://github.com/JudyOne1/SoftNotify/issues) 报告问题、提出交互建议或分享使用场景。
 
 ## 参与贡献
 

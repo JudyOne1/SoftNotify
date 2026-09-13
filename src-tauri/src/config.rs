@@ -181,8 +181,12 @@ pub struct Config {
     pub sound_enabled: bool,
     #[serde(default = "default_volume")]
     pub volume: f64,
-    #[serde(default = "default_true")]
+    /// 开机自启必须由用户明确开启，避免首次运行即写系统启动项。
+    #[serde(default)]
     pub autostart: bool,
+    /// 用于区分旧版本的隐式默认值与用户主动选择。
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub autostart_confirmed: bool,
     #[serde(default)]
     pub paused: bool,
     /// 临时暂停截止时间（Unix 毫秒）；到期后自动恢复。
@@ -274,6 +278,9 @@ impl Default for Config {
 impl Config {
     /// 字段清洗，与 Electron 版 store.ts 的 normalize/update 对齐
     pub fn normalize(&mut self) {
+        if !self.autostart_confirmed {
+            self.autostart = false;
+        }
         self.reminders.truncate(MAX_REMINDERS);
         let mut seen = std::collections::HashSet::new();
         for r in &mut self.reminders {
@@ -524,6 +531,10 @@ fn is_valid_date(d: &str) -> bool {
     chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").is_ok()
 }
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 pub struct Store {
     path: PathBuf,
     pub config: Config,
@@ -597,6 +608,21 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::Config;
+
+    #[test]
+    fn requires_explicit_autostart_confirmation() {
+        let mut config: Config = serde_json::from_value(serde_json::json!({
+            "autostart": true
+        }))
+        .unwrap();
+        config.normalize();
+        assert!(!config.autostart);
+
+        config.autostart = true;
+        config.autostart_confirmed = true;
+        config.normalize();
+        assert!(config.autostart);
+    }
 
     #[test]
     fn clears_expired_temporary_pause() {

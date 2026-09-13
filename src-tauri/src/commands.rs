@@ -17,7 +17,12 @@ pub fn config_get(state: State<AppState>) -> Value {
 }
 
 #[tauri::command]
-pub fn config_set(app: AppHandle, state: State<AppState>, patch: Value) -> Value {
+pub fn config_set(app: AppHandle, state: State<AppState>, mut patch: Value) -> Value {
+    if patch.get("autostart").and_then(Value::as_bool).is_some() {
+        if let Some(values) = patch.as_object_mut() {
+            values.insert("autostartConfirmed".into(), Value::Bool(true));
+        }
+    }
     state.store.lock().unwrap().apply_patch(patch);
     drop(state);
     crate::apply_config_change(&app);

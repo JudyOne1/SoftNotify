@@ -1,6 +1,6 @@
 {
   "name": "softnotify",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A gentle, local-first desktop reminder with danmaku-style notifications",
   "author": {
     "name": "SoftNotify contributors",
