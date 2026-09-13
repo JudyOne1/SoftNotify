@@ -1,0 +1,48 @@
+{
+  "name": "softnotify",
+  "version": "0.7.0",
+  "description": "A gentle, local-first desktop reminder with danmaku-style notifications",
+  "author": {
+    "name": "SoftNotify contributors",
+    "email": "JudyOne1@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/JudyOne1/SoftNotify",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@ncdai/react-wheel-picker": "^1.2.3",
+    "@radix-ui/react-checkbox": "^1.3.11",
+    "@radix-ui/react-label": "^2.1.15",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@radix-ui/react-select": "^2.3.7",
+    "@radix-ui/react-slider": "^1.4.7",
+    "@radix-ui/react-switch": "^1.3.7",
+    "@tauri-apps/api": "^2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.35.0",
+    "lunar-typescript": "^1.8.6",
+    "react": "^19.2.8",
+    "react-activity-calendar": "^3.2.1",
+    "react-dom": "^19.2.8",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^5.2.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11"
+  }
+}

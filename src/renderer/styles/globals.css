@@ -1,0 +1,277 @@
+@import 'tailwindcss';
+@import '@ncdai/react-wheel-picker/style.css';
+
+/* 轮盘选择器：柔化上下渐隐（默认 20% 遮太狠，数字显示不完整） */
+[data-rwp] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+/* 库的 inline 高度计算有误（8 行只得到 72px），强制轮盘本体填满容器使数字居中 */
+[data-rwp] {
+  height: 100% !important;
+}
+
+/* 暗色变体跟随 data-theme（由渲染层按 config.themeMode + 系统偏好写入） */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ============ 语义令牌：柔光分层，暗色为默认基调 ============ */
+:root {
+  color-scheme: dark;
+  --background: #101217;
+  --foreground: #e6e9f0;
+  --card: #191e28;
+  --card-foreground: #e6e9f0;
+  --popover: #1c212c;
+  --popover-foreground: #e6e9f0;
+  --primary: #5b8cff;
+  --primary-foreground: #0b1020;
+  --secondary: #202633;
+  --secondary-foreground: #e6e9f0;
+  --muted: #13171f;
+  --muted-foreground: #a3adc0;
+  --accent: #202a3a;
+  --accent-foreground: #e6e9f0;
+  --destructive: #f87171;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: #141923;
+  --ring: #7aa2ff;
+  --radius: 0.625rem;
+
+  /* 兼容现有类名：双向拟物阴影改为单向投影与细描边。 */
+  --neu-light: rgba(255, 255, 255, 0.04);
+  --neu-dark: rgba(0, 0, 0, 0.32);
+  --neu-raised: 0 1px 2px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --neu-raised-sm: 0 1px 2px rgba(0, 0, 0, 0.28), 0 3px 8px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.035);
+  --neu-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.09), inset 0 1px 2px rgba(0, 0, 0, 0.24);
+  --neu-inset-sm: inset 0 0 0 1px rgba(255, 255, 255, 0.075);
+
+  /* 滑块手柄：用清晰明度差代替凸起拟物。 */
+  --thumb: #d7deea;
+  --thumb-ring: rgba(15, 23, 42, 0.6);
+
+  /* 开关只表示状态：关闭为中性灰，开启使用品牌色。 */
+  --sw-track-off: rgba(148, 163, 184, 0.18);
+  --sw-track-on: rgba(91, 140, 255, 0.24);
+  --sw-knob-off: #7f8a9d;
+  --sw-knob-on: #7aa2ff;
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --background: #f3f5f8;
+  --foreground: #1c2230;
+  --card: #ffffff;
+  --card-foreground: #1c2230;
+  --popover: #ffffff;
+  --popover-foreground: #1c2230;
+  --primary: #2f6bff;
+  --primary-foreground: #ffffff;
+  --secondary: #e9edf3;
+  --secondary-foreground: #1c2230;
+  --muted: #edf0f5;
+  --muted-foreground: #5b6472;
+  --accent: #e8efff;
+  --accent-foreground: #1c2230;
+  --destructive: #dc2626;
+  --border: rgba(15, 23, 42, 0.1);
+  --input: #ffffff;
+  --ring: #2f6bff;
+
+  --neu-light: rgba(255, 255, 255, 0.8);
+  --neu-dark: rgba(15, 23, 42, 0.08);
+  --neu-raised: 0 1px 2px rgba(15, 23, 42, 0.07), 0 8px 24px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(15, 23, 42, 0.055);
+  --neu-raised-sm: 0 1px 2px rgba(15, 23, 42, 0.065), 0 3px 8px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  --neu-inset: inset 0 0 0 1px rgba(15, 23, 42, 0.13), inset 0 1px 2px rgba(15, 23, 42, 0.045);
+  --neu-inset-sm: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+
+  --thumb: #ffffff;
+  --thumb-ring: rgba(15, 23, 42, 0.18);
+
+  --sw-track-off: #cbd3df;
+  --sw-track-on: rgba(47, 107, 255, 0.24);
+  --sw-knob-off: #ffffff;
+  --sw-knob-on: #2f6bff;
+
+  --scrollbar-thumb: rgba(15, 23, 42, 0.22);
+  --scrollbar-thumb-hover: rgba(15, 23, 42, 0.36);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']):not([data-theme='light']) {
+    color-scheme: light;
+    --background: #f3f5f8;
+    --foreground: #1c2230;
+    --card: #ffffff;
+    --card-foreground: #1c2230;
+    --popover: #ffffff;
+    --popover-foreground: #1c2230;
+    --primary: #2f6bff;
+    --primary-foreground: #ffffff;
+    --secondary: #e9edf3;
+    --secondary-foreground: #1c2230;
+    --muted: #edf0f5;
+    --muted-foreground: #5b6472;
+    --accent: #e8efff;
+    --accent-foreground: #1c2230;
+    --destructive: #dc2626;
+    --border: rgba(15, 23, 42, 0.1);
+    --input: #ffffff;
+    --ring: #2f6bff;
+
+    --neu-light: rgba(255, 255, 255, 0.8);
+    --neu-dark: rgba(15, 23, 42, 0.08);
+    --neu-raised: 0 1px 2px rgba(15, 23, 42, 0.07), 0 8px 24px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(15, 23, 42, 0.055);
+    --neu-raised-sm: 0 1px 2px rgba(15, 23, 42, 0.065), 0 3px 8px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(15, 23, 42, 0.05);
+    --neu-inset: inset 0 0 0 1px rgba(15, 23, 42, 0.13), inset 0 1px 2px rgba(15, 23, 42, 0.045);
+    --neu-inset-sm: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+
+    --thumb: #ffffff;
+    --thumb-ring: rgba(15, 23, 42, 0.18);
+
+    --sw-track-off: #cbd3df;
+    --sw-track-on: rgba(47, 107, 255, 0.24);
+    --sw-knob-off: #ffffff;
+    --sw-knob-on: #2f6bff;
+
+    --scrollbar-thumb: rgba(15, 23, 42, 0.22);
+    --scrollbar-thumb-hover: rgba(15, 23, 42, 0.36);
+  }
+}
+
+/* ============ 滚动条（全窗口统一，替代系统默认的突兀白条） ============ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 令牌 → Tailwind 工具类映射 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
+  --radius-lg: var(--radius);
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  background: var(--background);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+/* Win11 Mica / macOS vibrancy：背景转半透明 */
+body.native-material {
+  background: color-mix(in srgb, var(--background) 78%, transparent);
+}
+
+/* 设置分区切换与反馈提示：短、轻，避免打断连续操作。 */
+.settings-section-enter {
+  animation: settings-section-in 180ms ease-out both;
+}
+
+@keyframes settings-section-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 180ms ease-out both;
+}
+
+.ui-tooltip-content {
+  transform: translateY(2px);
+}
+
+.ui-tooltip:hover .ui-tooltip-content,
+.ui-tooltip:focus-within .ui-tooltip-content {
+  transform: translateY(0);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .settings-section-enter,
+  .toast-enter {
+    animation-duration: 1ms !important;
+  }
+}

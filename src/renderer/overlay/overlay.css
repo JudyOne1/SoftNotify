@@ -1,0 +1,187 @@
+html.overlay-document,
+html.overlay-document body,
+html.overlay-document #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+.overlay-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+/* 弹幕容器：负责飘行动画；内部文字与打卡按钮跟随 */
+.danmaku-wrap {
+  position: absolute;
+  left: 100%;
+  white-space: nowrap;
+  pointer-events: auto;
+  animation-name: danmaku-move;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  will-change: transform;
+}
+
+/* 悬停时暂停飘动，方便点击打卡按钮（仅穿透解除后才会产生 :hover） */
+.danmaku-wrap:hover {
+  animation-play-state: paused;
+}
+
+.danmaku {
+  font-family: system-ui, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.danmaku-clickable {
+  cursor: pointer;
+}
+
+/* 默认的弹幕形态：半透明胶囊。关闭设置后由 OverlayApp 回退到上面的裸文字样式。 */
+.danmaku-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(72vw, 720px);
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(22, 26, 34, 0.82);
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  color: #e6e9f0;
+  line-height: 1;
+  text-shadow: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.danmaku-capsule:hover,
+.danmaku-capsule:focus-visible {
+  border-color: color-mix(in srgb, var(--dm-accent) 58%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28), 0 0 0 3px color-mix(in srgb, var(--dm-accent) 16%, transparent);
+  outline: none;
+}
+
+.danmaku-capsule svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--dm-accent);
+  stroke-width: 2;
+}
+
+.danmaku-copy {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.danmaku-capsule time {
+  flex: none;
+  color: rgba(230, 233, 240, 0.62);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.danmaku-important {
+  border-color: color-mix(in srgb, #f7c873 48%, transparent);
+  box-shadow: 0 7px 24px rgba(0, 0, 0, 0.24), 0 0 18px rgba(247, 200, 115, 0.1);
+}
+
+.danmaku-escalated {
+  box-shadow: 0 7px 24px rgba(0, 0, 0, 0.26), 0 0 20px color-mix(in srgb, var(--dm-accent) 18%, transparent);
+}
+
+/* 暗色系统下加强描边，保证浅色文字在浅色壁纸上也可读 */
+@media (prefers-color-scheme: dark) {
+  .danmaku {
+    text-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.9),
+      0 0 8px rgba(0, 0, 0, 0.55);
+  }
+}
+
+.danmaku-nostroke {
+  text-shadow: none;
+}
+
+/* 打卡按钮：悬停时以半透明胶囊直接覆盖在弹幕文字上 */
+.dm-actions {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 2px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(17, 20, 28, 0.92);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.danmaku-wrap:hover .dm-actions {
+  opacity: 1;
+}
+
+.dm-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  background: transparent;
+  color: #e6e9f0;
+}
+
+.dm-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dm-done {
+  color: #34d399;
+  font-weight: 600;
+}
+
+.danmaku-wrap.is-completing {
+  animation-play-state: paused;
+}
+
+.danmaku-wrap.is-completing .danmaku {
+  animation: dm-complete 220ms ease-out forwards;
+}
+
+@keyframes dm-complete {
+  to {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes danmaku-move {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100vw - 100%));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .danmaku-capsule,
+  .dm-actions {
+    transition-duration: 1ms !important;
+  }
+
+  .danmaku-wrap.is-completing .danmaku {
+    animation-duration: 1ms !important;
+  }
+}

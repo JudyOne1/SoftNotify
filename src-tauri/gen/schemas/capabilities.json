@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capability for SoftNotify windows","local":true,"windows":["settings","welcome","tray-panel","overlay-*"],"permissions":["core:default","opener:default"]}}

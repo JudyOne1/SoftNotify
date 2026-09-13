@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/schema.json",
+  "identifier": "default",
+  "description": "Default capability for SoftNotify windows",
+  "windows": ["settings", "welcome", "tray-panel", "overlay-*"],
+  "permissions": [
+    "core:default",
+    "opener:default"
+  ]
+}
